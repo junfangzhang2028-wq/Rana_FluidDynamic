@@ -1,0 +1,181 @@
+{
+  "generated_at": "2026-05-01T12:09:19.622740",
+  "project_dir": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\m-johnson2-aqueous-outflow-8fb729748300_Modified",
+  "output_dir": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs",
+  "notes": [
+    "This script uses offline.outputs_trial because offline.outputs depends on missing ComparisonData files.",
+    "Tasks are best-effort: failures are recorded in the summary instead of stopping the whole run."
+  ],
+  "metrics": {
+    "baseline_constant_pressure_iop7": {
+      "status": "ok",
+      "label": "baseline_constant_pressure_iop7",
+      "result": {
+        "iop": 7.0,
+        "flowrate": 1.83775,
+        "resistance": 3.809006,
+        "facility": 0.262536
+      }
+    },
+    "baseline_constant_flow_qt2_pev8": {
+      "status": "ok",
+      "label": "baseline_constant_flow_qt2_pev8",
+      "result": {
+        "iop": 15.090129,
+        "flowrate": 2.0,
+        "resistance": 3.545064,
+        "facility": 0.282082
+      }
+    },
+    "trabeculotomy_1h_iop7": {
+      "status": "ok",
+      "label": "trabeculotomy_1h_iop7",
+      "result": {
+        "iop": 7.0,
+        "flowrate": 2.585063,
+        "resistance": 2.707864,
+        "facility": 0.369295
+      }
+    },
+    "trabeculotomy_4h_iop7": {
+      "status": "ok",
+      "label": "trabeculotomy_4h_iop7",
+      "result": {
+        "iop": 7.0,
+        "flowrate": 3.774073,
+        "resistance": 1.85476,
+        "facility": 0.539153
+      }
+    },
+    "trabeculotomy_12h_iop7": {
+      "status": "ok",
+      "label": "trabeculotomy_12h_iop7",
+      "result": {
+        "iop": 7.0,
+        "flowrate": 3.888889,
+        "resistance": 1.8,
+        "facility": 0.555556
+      }
+    },
+    "yag_2holes_qt2": {
+      "status": "ok",
+      "label": "yag_2holes_qt2",
+      "result": {
+        "iop": 4.679968,
+        "flowrate": 2.0,
+        "resistance": 2.339984,
+        "facility": 0.427353
+      }
+    },
+    "istent_single_qt2_pev8": {
+      "status": "ok",
+      "label": "istent_single_qt2_pev8",
+      "result": {
+        "iop": 13.484779,
+        "flowrate": 2.0,
+        "resistance": 2.74239,
+        "facility": 0.364645
+      }
+    }
+  },
+  "plots": {
+    "baseline_pr_curve": {
+      "status": "ok",
+      "label": "baseline_pr_curve",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\01_baseline_pr_curve.png",
+      "result": null
+    },
+    "baseline_pr_curve_normalized": {
+      "status": "ok",
+      "label": "baseline_pr_curve_normalized",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\02_baseline_pr_curve_normalized.png",
+      "result": null
+    },
+    "baseline_pressure_distribution": {
+      "status": "ok",
+      "label": "baseline_pressure_distribution",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\03_baseline_pressure_distribution.png",
+      "result": {
+        "iop": 7.0,
+        "flowrate": 1.83775,
+        "resistance": 3.809006,
+        "facility": 0.262536
+      }
+    },
+    "baseline_height_distribution": {
+      "status": "failed",
+      "label": "baseline_height_distribution",
+      "figure": null,
+      "error": "get_h() missing 1 required positional argument: 'node'"
+    },
+    "baseline_collector_channel_flow": {
+      "status": "ok",
+      "label": "baseline_collector_channel_flow",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\05_baseline_collector_channel_flow.png",
+      "result": {
+        "iop": 7.0,
+        "flowrate": 1.83775,
+        "resistance": 3.809006,
+        "facility": 0.262536
+      }
+    },
+    "trabeculotomy_facility_change_iop7": {
+      "status": "ok",
+      "label": "trabeculotomy_facility_change_iop7",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\06_trabeculotomy_facility_change_iop7.png",
+      "result": null
+    },
+    "yag_holes_iop_effect": {
+      "status": "ok",
+      "label": "yag_holes_iop_effect",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\07_yag_holes_iop_effect.png",
+      "result": null
+    },
+    "nonuniform_cc_pr_curve": {
+      "status": "ok",
+      "label": "nonuniform_cc_pr_curve",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\08_nonuniform_cc_pr_curve.png",
+      "result": null
+    },
+    "weak_tm_nonuniform_effect": {
+      "status": "ok",
+      "label": "weak_tm_nonuniform_effect",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\09_weak_tm_nonuniform_effect.png",
+      "result": null
+    },
+    "istent_pressure_distribution": {
+      "status": "ok",
+      "label": "istent_pressure_distribution",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\10_istent_pressure_distribution.png",
+      "result": {
+        "iop": 13.484779,
+        "flowrate": 2.0,
+        "resistance": 2.74239,
+        "facility": 0.364645
+      }
+    },
+    "istent_height_distribution": {
+      "status": "failed",
+      "label": "istent_height_distribution",
+      "figure": null,
+      "error": "IOP must be greater than episcleral venous pressure"
+    },
+    "istent_collector_channel_flow": {
+      "status": "ok",
+      "label": "istent_collector_channel_flow",
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\12_istent_collector_channel_flow.png",
+      "result": {
+        "iop": 13.484779,
+        "flowrate": 2.0,
+        "resistance": 2.74239,
+        "facility": 0.364645
+      }
+    }
+  },
+  "counts": {
+    "ok_plots": 10,
+    "failed_plots": 2,
+    "ok_metrics": 7,
+    "failed_metrics": 0
+  }
+}
