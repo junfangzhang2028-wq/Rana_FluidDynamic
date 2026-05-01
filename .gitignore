@@ -11,6 +11,7 @@ Desktop.ini
 
 # Python
 .venv/
+.venv37/
 venv/
 env/
 ENV/
