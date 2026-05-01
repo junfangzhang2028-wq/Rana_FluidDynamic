@@ -248,6 +248,7 @@ def main() -> None:
             "11_istent_height_distribution",
             lambda: ot.plot_height_dist(
                 qt=2.0,
+                mode="constant flow",
                 show_p=False,
                 pev=8.0,
                 stents=[(0, build_istent())],
