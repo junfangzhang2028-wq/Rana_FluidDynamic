@@ -1,0 +1,19 @@
+<h1 style="padding-left: 1em;">Instructions</h1>
+<mat-tree [dataSource]="dataSource" [treeControl]="treeControl" class="my-tree">
+  <!-- This is the tree node template for leaf nodes -->
+  <mat-tree-node @showHide *matTreeNodeDef="let node" matTreeNodePadding="10px" class="my-flat-tree-node">
+    <!-- use a disabled button to provide padding for tree leaf -->
+    <button mat-icon-button disabled></button>
+    <div [innerHTML]="node.name | safe: 'html'"></div>
+  </mat-tree-node>
+  <!-- This is the tree node template for expandable nodes -->
+  <mat-tree-node @showHide *matTreeNodeDef="let node;when: hasChild" matTreeNodePadding="20px" class="my-tree-node">
+    <button mat-icon-button matTreeNodeToggle
+            [attr.aria-label]="'toggle ' + node.name">
+      <mat-icon class="mat-icon-rtl-mirror">
+        {{treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right'}}
+      </mat-icon>
+    </button>
+    <div [innerHTML]="node.name | safe: 'html'"></div>
+  </mat-tree-node>
+</mat-tree>

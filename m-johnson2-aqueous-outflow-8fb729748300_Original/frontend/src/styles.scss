@@ -1,0 +1,33 @@
+/* You can add global styles to this file, and also import other style files */
+@import "~@angular/material/theming";
+@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+
+@include mat-core()
+
+$nu-purple: (
+  100: #7e55b4,
+  500: #4E2A84,
+  700: #1d0056,
+  contrast: (
+    100: $light-primary-text,
+    500: $light-primary-text,
+    700: $light-primary-text
+  )
+);
+
+$northwestern-primary: mat-palette($nu-purple);
+$northwestern-warn: mat-palette($mat-red);
+$northwestern-accent: mat-palette($mat-amber);
+$northwestern-theme: mat-light-theme($northwestern-primary, $northwestern-accent, $northwestern-warn);
+
+@include angular-material-theme($northwestern-theme)
+
+@font-face {
+  font-family: "Roboto";
+  src: url("https://fonts.googleapis.com/css?family=Roboto:300,400,500");
+  font-weight: normal;
+  font-style: normal;
+}
+
+html, body { height: 100%; }
+body { font-family: Roboto; margin: 0; }

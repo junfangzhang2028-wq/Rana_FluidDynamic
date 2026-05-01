@@ -1,0 +1,60 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.sublime-workspace
+*.code-workspace
+
+# Python
+.venv/
+venv/
+env/
+ENV/
+**/__pycache__/
+**/*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Python packaging
+build/
+dist/
+site/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Node / Angular
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+.angular/
+
+# Frontend build output
+out-tsc/
+tmp/
+
+# Project-specific generated artifacts
+aq-ui-dist/
+**/build/
+**/dist/
+**/node_modules/
+**/venv/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log

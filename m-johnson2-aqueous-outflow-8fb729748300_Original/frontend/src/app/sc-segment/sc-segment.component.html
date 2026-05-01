@@ -1,0 +1,6 @@
+<svg:line class="unselectable" [attr.x1]="separator.x1" [attr.y1]="separator.y1" [attr.x2]="separator.x2"
+          [attr.y2]="separator.y2" [attr.stroke-width]="3" stroke="#8d8d8d"></svg:line>
+<svg:path class="unselectable" [@overLine]="focused ? 'hover' : 'unhover'" (mouseover)="focused=true"
+          (mouseout)="focused=false" [attr.d]="d" [attr.stroke]="'#bdbdbd'" [attr.stroke-width]="circle.strokeWidth"
+          [matTooltip]="'Segment '+seg.seg+', h0 = '+seg.height+' &mu;m. Click to edit.'" (click)="editSegment()"></svg:path>
+

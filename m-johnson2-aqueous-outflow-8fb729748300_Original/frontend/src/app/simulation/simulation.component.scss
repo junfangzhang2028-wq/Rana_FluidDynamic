@@ -1,0 +1,40 @@
+@import "~@angular/material/theming";
+
+.simulation-card {
+  margin: 1%;
+  z-index: 0;
+  align-content: center;
+}
+
+.visualizer {
+  min-height: 38em;
+}
+
+.condition {
+  width: 100%;
+}
+
+.surgery {
+  margin-bottom: 0px;
+  margin-top: 0px;
+}
+
+.start-end-container {
+  overflow: hidden;
+}
+
+.input-inline {
+  width: 8em;
+}
+
+.under-check {
+  padding-top: 1.25em;
+}
+
+.condition-button {
+  margin-bottom: 1.25em;
+}
+
+.select-inline {
+  width: 13em;
+}

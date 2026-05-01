@@ -1,0 +1,10 @@
+<h1 mat-dialog-title>Hour {{data.hour}}</h1>
+<mat-dialog-content>
+  <mat-form-field>
+    <mat-label>R<sub>TM</sub> (mmHg/&mu;L/min)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.resistance">
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions fxLayout="row" fxLayoutAlign="end">
+  <button mat-button color="primary" [mat-dialog-close]="data">Save</button>
+</mat-dialog-actions>

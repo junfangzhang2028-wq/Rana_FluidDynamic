@@ -1,0 +1,13 @@
+<svg:line #marker
+          class="unselectable"
+          [@overLine]="focused ? 'hover' : 'unhover'"
+          (mouseover)="focused=true"
+          (mouseout)="focused=false"
+          [attr.x1]="line.x1"
+          [attr.y1]="line.y1"
+          [attr.x2]="line.x2"
+          [attr.y2]="line.y2"
+          stroke-width="3"
+          [attr.stroke]="'#1e88e5'"
+          (click)="editCC()"
+          [matTooltip]="'&theta; = '+cc.cc.loc+'&deg;, Conductance Ratio = '+cc.cc.g_ratio+'. Click to edit.'"></svg:line>

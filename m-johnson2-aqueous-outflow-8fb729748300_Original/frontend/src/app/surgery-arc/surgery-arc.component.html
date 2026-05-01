@@ -1,0 +1,4 @@
+<svg:path class="unselectable" [attr.d]="d1" [attr.stroke]="color" [attr.stroke-width]="circle.strokeWidth - 5" fill-opacity="0"></svg:path>
+<svg:path class="unselectable" [attr.d]="d2" [attr.stroke]="color" [attr.stroke-width]="circle.strokeWidth - 5" fill-opacity="0"></svg:path>
+<svg:line #start class="unselectable" [@overLine]="focused ? 'hover' : 'unhover'" (mouseover)="focused=true" (mouseout)="focused=false" [attr.x1]="startLine.x1" [attr.y1]="startLine.y1" [attr.x2]="startLine.x2" [attr.y2]="startLine.y2" [attr.stroke-width]="arc.strokeWidth" stroke="black"></svg:line>
+<svg:line #stop class="unselectable" [@overLine]="focused ? 'hover' : 'unhover'" (mouseover)="focused=true" (mouseout)="focused=false" [attr.x1]="stopLine.x1" [attr.y1]="stopLine.y1" [attr.x2]="stopLine.x2" [attr.y2]="stopLine.y2" [attr.stroke-width]="arc.strokeWidth" stroke="black"></svg:line>

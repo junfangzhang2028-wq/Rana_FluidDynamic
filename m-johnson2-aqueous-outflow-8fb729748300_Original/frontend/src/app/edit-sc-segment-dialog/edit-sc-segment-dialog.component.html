@@ -1,0 +1,10 @@
+<h1 mat-dialog-title>Segment {{data.seg}}</h1>
+<mat-dialog-content>
+  <mat-form-field>
+    <mat-label>h<sub>0</sub> (&mu;m)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.height">
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions fxLayout="row" fxLayoutAlign="end">
+  <button mat-button color="primary" [mat-dialog-close]="data">Save</button>
+</mat-dialog-actions>

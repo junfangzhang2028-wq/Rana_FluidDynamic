@@ -1,0 +1,16 @@
+<h1 mat-dialog-title>Collector Channel {{data.index + 1}}</h1>
+<mat-dialog-content fxLayout="column">
+  <p *ngIf="error">ALL FIELDS REQUIRED</p>
+  <mat-form-field>
+    <mat-label>Location (&deg;)</mat-label>
+    <input required matInput type="number" [(ngModel)]="data.cc.loc">
+  </mat-form-field>
+  <mat-form-field>
+    <mat-label>Relative Conductance</mat-label>
+    <input required matInput type="number" [(ngModel)]="data.cc.g_ratio">
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions fxLayout="row" fxLayoutAlign="end">
+  <button mat-button color="warn" [mat-dialog-close]="{delete: true, data: data.index}">Delete</button>
+  <button mat-button color="primary" (click)="saveCC()">Save</button>
+</mat-dialog-actions>

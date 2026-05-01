@@ -1,0 +1,124 @@
+<h1 mat-dialog-title>{{ data.get('name').value }}</h1>
+<mat-dialog-content>
+  <form [formGroup]="data">
+    <mat-form-field class="constant">
+      <input name="Name" placeholder="Name" matInput type="text" formControlName="name">
+    </mat-form-field>
+    <mat-form-field class="constant">
+      <mat-label>Length (&mu;m)</mat-label>
+      <input placeholder="Length (&mu;m)" matInput type="number" formControlName="length">
+      <mat-icon matSuffix matTooltip="Length of stent in SC. Should not include inlet length." matTooltipPositon="right">
+        help
+      </mat-icon>
+      <mat-error *ngIf="!data.get('length').valid">Length must be greater than 0</mat-error>
+    </mat-form-field>
+    <mat-form-field class="constant">
+      <mat-label>Inlet Location (&mu;m)</mat-label>
+      <input placeholder="Inlet Location (&mu;m)" matInput type="number" formControlName="loc_inlet">
+      <mat-icon matSuffix matTooltip="Distance to the inlet from the leading edge of the stent" matTooltipPositon="right">
+        help
+      </mat-icon>
+      <mat-error *ngIf="!data.get('loc_inlet').valid">Inlet location must be between 0 and Length</mat-error>
+    </mat-form-field>
+    <mat-form-field class="constant">
+      <mat-label>Width (&mu;m)</mat-label>
+      <input matInput type="number" formControlName="w">
+      <mat-icon matSuffix matTooltip="Width of the stent channel" matTooltipPositon="right">
+        help
+      </mat-icon>
+      <mat-error *ngIf="!data.get('w').valid">Width must be greater than 0</mat-error>
+    </mat-form-field>
+    <mat-form-field class="constant">
+      <mat-label>Post-Stent Canal Height (&mu;m)</mat-label>
+      <input matInput type="number" formControlName="h_after">
+      <mat-icon matSuffix matTooltip="If the height of the device in the canal is significantly larger than the height of the channel through which fluid flows in the stent, this is used for the canal height in the 1.5 clock hour dilated region before and/or after the stent. If not specified, either Channel Height or Spine Height is used." matTooltipPositon="right">
+        help
+      </mat-icon>
+      <mat-error *ngIf="!data.get('h_after').valid">h<sub>after</sub> must be greater than 0</mat-error>
+    </mat-form-field>
+    <mat-form-field class="constant">
+      <mat-label>G<sub>inlet</sub> (&mu;L/min/mmHg)</mat-label>
+      <input matInput type="number" formControlName="g_inlet">
+      <mat-icon matSuffix matTooltip="Conductance of the inlet portion of the stent. Should only be specified if &le; ~100 &mu;L/min/mmHg, ie. has significant resistance." matTooltipPositon="right">
+        help
+      </mat-icon>
+      <mat-error *ngIf="!data.get('g_inlet').valid">G<sub>inlet</sub> must be greater than 0</mat-error>
+    </mat-form-field>
+    <div fxLayout="row" fxLayoutAlign="space-between">
+      <mat-checkbox [checked]="data.get('two_way').value" (change)="data.get('two_way').setValue(!data.get('two_way').value)">Bidirectional</mat-checkbox>
+      <mat-icon matTooltip="If checked, flow is allowed to exit the stent on either side. Only relevant if Inlet Location = 0 &mu;m or Length" matTooltipPositon="right">
+        help
+      </mat-icon>
+    </div>
+    <mat-form-field class="constant" style="padding-top: 1.25em;">
+      <mat-label>Channel Geometry</mat-label>
+      <mat-select [formControl]="data.get('geometry')">
+        <mat-option value="ellipse">Ellipse</mat-option>
+        <mat-option value="rectangle">Rectangle</mat-option>
+      </mat-select>
+      <mat-icon matSuffix matTooltip="Geometry of the channel of the stent. Use ellipse model for semicircular or circular channels as well as elliptical channels." matTooltipPositon="right">
+        help
+      </mat-icon>
+    </mat-form-field>
+    <div fxLayout="row" fxLayoutAlign="space-between">
+      <mat-checkbox [checked]="windowed" (change)="windowed = !windowed">Windows</mat-checkbox>
+      <mat-icon matTooltip="Toggles between showing windowless parameters and windowed parameters">help</mat-icon>
+    </div>
+    <div @addRemove fxFlexAlign="start" fxLayout="column" *ngIf="!windowed" style="padding-top: 1.25em;">
+      <mat-form-field class="constant">
+        <mat-label>Channel Height (&mu;m)</mat-label>
+        <input matInput type="number" formControlName="hd">
+        <mat-icon matSuffix matTooltip="Height of the stent channel. Leave blank if not constant (e.g. has window regions)" matTooltipPositon="right">
+          help
+        </mat-icon>
+        <mat-error *ngIf="!data.get('hd').valid">Height must be &ge; 0</mat-error>
+      </mat-form-field>
+    </div>
+    <div @addRemove fxFlexAlign="start" fxLayout="column" *ngIf="windowed" style="padding-top: 1.25em;">
+      <mat-form-field class="constant">
+        <mat-label># of Window Regions</mat-label>
+        <input matInput type="number" formControlName="n_windows">
+        <mat-icon matSuffix matTooltip="# of window regions the stent has. Window regions are regions in which SC is dilated by the stent, but TM flow is not blocked" matTooltipPositon="right">
+          help
+        </mat-icon>
+        <mat-error *ngIf="!data.get('n_windows').valid">N<sub>windows</sub> must be &ge; 0</mat-error>
+      </mat-form-field>
+      <mat-form-field class="constant">
+        <mat-label>Window Length (&mu;m)</mat-label>
+        <input matInput type="number" formControlName="l_window">
+        <mat-icon matSuffix matTooltip="Length of window regions" matTooltipPositon="right">
+          help
+        </mat-icon>
+        <mat-error *ngIf="!data.get('l_window').valid">L<sub>windows</sub> must be &ge; 0</mat-error>
+      </mat-form-field>
+      <mat-form-field class="constant">
+        <mat-label>Window Height (&mu;m)</mat-label>
+        <input matInput type="number" formControlName="h_window">
+        <mat-icon matSuffix matTooltip="Height of the channel in window regions." matTooltipPositon="right">
+          help
+        </mat-icon>
+        <mat-error *ngIf="!data.get('h_window').valid">h<sub>windows</sub> must be &ge; 0</mat-error>
+      </mat-form-field>
+      <mat-form-field class="constant">
+        <mat-label>Spine Length (&mu;m)</mat-label>
+        <input matInput type="number" formControlName="l_spine">
+        <mat-icon matSuffix matTooltip="Length of spine regions. Spine regions are modeled as dilated by the stent and having no flow through the TM" matTooltipPositon="right">
+          help
+        </mat-icon>
+        <mat-error *ngIf="!data.get('l_spine').valid">L<sub>spines</sub> must be &ge; 0</mat-error>
+      </mat-form-field>
+      <mat-form-field class="constant">
+        <mat-label>Spine Height (&mu;m)</mat-label>
+        <input matInput type="number" formControlName="h_spine">
+        <mat-icon matSuffix matTooltip="Height of the channel in spine regions." matTooltipPositon="right">
+          help
+        </mat-icon>
+        <mat-error *ngIf="!data.get('h_spine').valid">h<sub>spines</sub> must be &ge; 0</mat-error>
+      </mat-form-field>
+    </div>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions fxLayout="row" fxLayoutAlign="end">
+  <button mat-button [mat-dialog-close]="null">Cancel</button>
+  <button mat-button color="primary" [mat-dialog-close]="data.value">Save</button>
+</mat-dialog-actions>

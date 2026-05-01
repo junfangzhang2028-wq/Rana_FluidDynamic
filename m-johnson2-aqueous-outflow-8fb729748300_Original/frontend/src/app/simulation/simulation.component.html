@@ -1,0 +1,111 @@
+<mat-card class="simulation-card" fxFlex="1 1 auto" fxLayout="column">
+  <mat-card-content fxFlex="1 1 auto" fxLayout="row" fxLayout.lt-md="column" fxLayoutAlign="start">
+    <app-visual-editor class="visualizer" fxFlex="1 1 54em" fxLayoutAlign="space-around" fxFlexAlign="center"
+                       *ngIf="!env.solved && !env.solving" class="visual-editor" [props]="circleProps"
+                       [arcs]="surgArcs" (arcChange)="toSurgery($event)"
+                       [ccs]="ccLines" (ccChange)="toCCControl($event)"
+                       [tm]="conditionsForm.get('rtm').value" (tmChange)="toTMControl($event)"
+                       [sc]="conditionsForm.get('h0').value" (scChange)="toSCControl($event)"></app-visual-editor>
+    <app-solution class="visualizer" fxFlex="1 1 54em" fxFlexAlign="center" *ngIf="env.solved && !env.solving"
+                  class="visual-editor" [circleProps]="circleProps" [solution]="env.solution"></app-solution>
+    <div class="visualizer" fxFlex="1 1 54em" fxLayout.gt-md="row" fxLayout="column" fxLayoutAlign="space-around" *ngIf="env.solving && !env.failed" >
+      <mat-progress-spinner fxFlexAlign="center" mode="indeterminate"></mat-progress-spinner>
+    </div>
+    <div fxLayout="column" fxFlex="1 1 auto">
+      <form [formGroup]="conditionsForm">
+        <mat-form-field class="condition" *ngIf="conditionsForm.get('mode').value == 'constant pressure'">
+          <input matInput name="Intraocular Pressure (mmHg)" placeholder="Intraocular Pressure (mmHg)" type="number" formControlName="iop">
+        </mat-form-field>
+        <mat-form-field @addRemove class="condition" *ngIf="conditionsForm.get('mode').value == 'constant flow'">
+          <input matInput name="Flowrate (&mu;L/min)" placeholder="Flowrate (&mu;L/min)" type="number" formControlName="qt" (ngModelChange)="calcRtm()">
+          <mat-icon matSuffix matTooltip="Flowrate through the conventional outflow pathway. Equal to Total Flow - Unconventional Flow.">help</mat-icon>
+        </mat-form-field>
+        <mat-checkbox class="condition" formControlName="unconventional" (ngModelChange)="calcRtm()" matTooltip="Qu defaults to 0.28 &mu;L/min. This changes Rtm if the Baseline IOP field is enabled. See Edit Constants to change.">
+          Include unconventional outflow
+        </mat-checkbox>
+        <mat-form-field @addRemove class="condition under-check">
+          <input matInput name="Baseline IOP (mmHg)" placeholder="Baseline IOP (mmHg)" type="number" formControlName="iop" (ngModelChange)="calcRtm()">
+          <mat-error *ngIf="!conditionsForm.get('iop').valid"><b>IOP</b> must be greater than <b>P<sub>V</sub></b></mat-error>
+          <mat-icon matSuffix matTooltip="IOP assuming Flowrate = 2 &mu;L/min, Pv = 8 mmHg, default CC distribution, and no surgeries applied. Controls Rtm (see Edit Constants).">help</mat-icon>
+        </mat-form-field>
+        <button @addRemove class="condition-button" mat-flat-button (click)="addCC()" matTooltip="Add a collector channel. See instructions for more detail on editing the collector channel distribution">Collector Channel <mat-icon>add</mat-icon></button>
+        <h3 @addRemove class="surgery">Surgeries</h3>
+          <h4 @addRemove class="surgery">
+            Trabeculectomies
+            <button mat-icon-button class="add-button" (click)="addTrabeculotomy()" matTooltip="Add a trabeculotomy. See Instructions for an explanation of how this surgery is modeled and what its parameters mean.">
+              <mat-icon>add</mat-icon>
+            </button>
+          </h4>
+          <div formArrayName="trabeculotomies">
+            <table @addRemove *ngFor="let trab of conditionsForm.get('trabeculotomies')['controls']; index as i">
+              <td>From &theta; = </td>
+              <td><mat-form-field class="input-inline">
+                <input required name="Start" placeholder="Start" matInput type="number" (ngModelChange)="toSurgArcs()" [formControl]="trab.get('start')">
+                <span matSuffix>&deg;</span>
+                <mat-error *ngIf="!trab.get('start').valid">Start must be between 0&deg; and End</mat-error>
+              </mat-form-field></td>
+              <td>to &theta; = </td>
+              <td><mat-form-field class="input-inline">
+                <input required name="End" placeholder="End" matInput type="number" (ngModelChange)="toSurgArcs()" [formControl]="trab.get('end')">
+                <span matSuffix>&deg;</span>
+                <mat-error *ngIf="!trab.get('end').valid">End must be between Start and 360&deg;</mat-error>
+              </mat-form-field></td>
+              <td><button mat-icon-button class="delete-inline" (click)="deleteTrabeculotomy(i)"><mat-icon>clear</mat-icon></button></td>
+            </table>
+          </div>
+          <h4 @addRemove class="surgery">
+            Trabecular Bypass Stents
+            <button mat-icon-button class="add-button" (click)="addStent()" matTooltip="Add a stent. See Instructions for an explanation of how this surgery is modeled and what its parameters mean.">
+              <mat-icon>add</mat-icon>
+            </button>
+          </h4>
+          <div formArrayName="stents">
+            <table @addRemove *ngFor="let stent of conditionsForm.get('stents')['controls']; index as i">
+              <td><mat-form-field class="select-inline">
+                <mat-select placeholder="Stent Type" [formControl]="stent.get('stent')" (valueChange)="toSurgArcs()">
+                  <mat-option *ngFor="let s of stentOptions" [value]="s">{{ s.name }}</mat-option>
+                  <mat-option (click)="newStent(i)">Create Stent</mat-option>
+                </mat-select>
+              </mat-form-field></td>
+              <td>at &theta; = </td>
+              <td><mat-form-field class="input-inline">
+                <input required name="Stent Location" placeholder="Stent Location" matInput type="number" [formControl]="stent.get('loc')" (ngModelChange)="toSurgArcs()">
+                <span matSuffix>&deg;</span>
+                <mat-error *ngIf="!stent.get('loc').valid">Stents may not cross 0&deg;</mat-error>
+              </mat-form-field></td>
+              <td><button mat-icon-button class="delete-inline" (click)="deleteStent(i)"><mat-icon>clear</mat-icon></button></td>
+            </table>
+          </div>
+          <h4 @addRemove class="surgery">
+            Sinusotomies
+            <button mat-icon-button class="add-button" (click)="addSinusotomy()" matTooltip="Add a sinusotomy. SINUSOTOMIES CAN REQUIRE LONG COMPUTATION TIMES AND MAY TIMEOUT PRIOR TO OBTAINING A SOLUTION. See Instructions for an explanation of how this surgery is modeled and what its parameters mean.">
+              <mat-icon>add</mat-icon>
+            </button>
+          </h4>
+          <div formArrayName="sinusotomies">
+            <table @addRemove *ngFor="let sinus of conditionsForm.get('sinusotomies')['controls']; index as i">
+              <td>From &theta; = </td>
+              <td><mat-form-field class="input-inline">
+                <input required name="Start" placeholder="Start" matInput type="number" (ngModelChange)="toSurgArcs()" [formControl]="sinus.get('start')">
+                <span matSuffix>&deg;</span>
+                <mat-error *ngIf="!sinus.get('start').valid">Start must be between 0&deg; and End</mat-error>
+              </mat-form-field></td>
+              <td>to &theta; = </td>
+              <td><mat-form-field class="input-inline">
+                <input required name="End" placeholder="End" matInput type="number" (ngModelChange)="toSurgArcs()" [formControl]="sinus.get('end')">
+                <span matSuffix>&deg;</span>
+                <mat-error *ngIf="!sinus.get('end').valid">End must be between Start and 360&deg;</mat-error>
+              </mat-form-field></td>
+              <td><button mat-icon-button class="delete-inline" (click)="deleteSinusotomy(i)"><mat-icon>clear</mat-icon></button></td>
+            </table>
+          </div>
+      </form>
+    </div>
+  </mat-card-content>
+  <mat-card-actions fxLayout="row" fxLayoutAlign="end">
+    <button mat-button fxFlexAlign="start" [matTooltip]="'Hide the '+(!env.solved ? 'Setup' : 'Solution')+' view and display the '+(env.solved ? 'Setup' : 'Solution')+' view'" (click)="env.solved = !env.solved; env.failed = false" [disabled]="!env.hasSoln">View {{ env.solved ? 'Setup' : 'Solution' }}</button>
+    <button mat-button (click)="editParams()" matTooltip="Edit various model parameters">Edit Constants</button>
+    <button mat-button color="warn" (click)="resetToBaseline()" matTooltip="Clear all surgeries and revert to default conditions">Reset</button>
+    <button mat-raised-button color="primary" (click)="solve()" matTooltip="Obtain solution for specified conditions">Solve</button>
+  </mat-card-actions>
+</mat-card>

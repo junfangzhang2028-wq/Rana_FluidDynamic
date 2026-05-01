@@ -1,0 +1,19 @@
+@import "~@angular/material/theming";
+
+.my-tree {
+  padding-top: 2em;
+  padding-right: 2em;
+  background-color: map-get($mat-light-theme-background, "background");
+}
+
+.my-flat-tree-node {
+  padding-bottom: 0.5em;
+  padding-top: 0.5em;
+}
+
+::ng-deep .my-icon {
+  font-family: "Material Icons";
+  font-weight: 400;
+  font-size: larger;
+  vertical-align: bottom;
+}

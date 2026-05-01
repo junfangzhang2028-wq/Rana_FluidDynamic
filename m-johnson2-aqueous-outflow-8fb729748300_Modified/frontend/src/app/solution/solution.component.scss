@@ -1,0 +1,32 @@
+@import "~@angular/material/theming";
+
+.unselectable {
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+.solution-info {
+  border-radius: 2.5px;
+  border: 1px solid $dark-dividers;
+  width: 45%;
+  padding: 10px;
+  min-height: 7.2em;
+  max-height: 7.2em;
+  @include mat-elevation(1);
+}
+
+.info-item {
+  max-height: 1.33em;
+  margin: 0;
+}
+
+.color-scale {
+  stroke: $dark-dividers;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}

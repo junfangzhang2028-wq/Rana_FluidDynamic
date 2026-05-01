@@ -1,0 +1,25 @@
+@import "~@angular/material/theming";
+
+.sidenav-container {
+  height: 100%;
+}
+
+.active-link {
+  background-color: map_get($mat-light-theme-background, 'selected-button');
+}
+
+.sidenav {
+  width: 200px;
+  z-index: 1000;
+  @include mat-elevation(2);
+}
+
+.main-toolbar {
+  @include mat-elevation(3);
+}
+
+.mat-toolbar.mat-primary {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}

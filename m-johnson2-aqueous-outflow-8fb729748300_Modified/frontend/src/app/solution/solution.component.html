@@ -1,0 +1,68 @@
+<div fxLayout="column" xmlns="http://www.w3.org/1999/html">
+  <svg [attr.height]="getContainerWidth()" [attr.width]="getContainerWidth() + 100">
+    <defs>
+      <path id="scPath" [attr.d]="'M '+(circleProps.centerX - circleProps.radius).toString()+' '+circleProps.centerY.toString()+' A '+circleProps.radius.toString()+' '+circleProps.radius.toString()+' 0 0 1 '+(circleProps.centerX + circleProps.radius).toString()+' '+ circleProps.centerY.toString()"></path>
+      <path id="ccPath" [attr.d]="'M '+(circleProps.centerX - circleProps.radius - 1.1 * circleProps.strokeWidth).toString()+' '+circleProps.centerY.toString()+' A '+(circleProps.radius + 1.1 * circleProps.strokeWidth).toString()+' '+(circleProps.radius + 1.1 * circleProps.strokeWidth).toString()+' 0 0 1 '+(circleProps.centerX + circleProps.radius + 1.1 * circleProps.strokeWidth).toString()+' '+ circleProps.centerY.toString()"></path>
+      <path id="tmPath" [attr.d]="'M '+(circleProps.centerX - circleProps.radius + circleProps.strokeWidth / 2 + 9).toString()+' '+circleProps.centerY.toString()+' A '+(circleProps.radius - circleProps.strokeWidth / 2 - 9).toString()+' '+(circleProps.radius - circleProps.strokeWidth / 2 - 9).toString()+' 0 0 1 '+(circleProps.centerX + circleProps.radius - circleProps.strokeWidth / 2 - 9).toString()+' '+ circleProps.centerY.toString()"></path>
+      <linearGradient id="colorScale" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color: #e53935; stop-opacity: 1"></stop>
+        <stop offset="100%" style="stop-color: #1e88e5; stop-opacity: 1"></stop>
+      </linearGradient>
+    </defs>
+    <g>
+      <rect class="unselectable color-scale" x="1" y="30" width="40" [attr.height]="getContainerWidth() - 60" rx="2.5" fill="url(#colorScale)"></rect>
+      <text style="font-size: 10pt" class="unselectable" x="50" y="40" text-anchor="left">{{ solution.iop | number:'1.0-2' }} mmHg (IOP)</text>
+      <text style="font-size: 10pt" class="unselectable" x="50" [attr.y]="getContainerWidth() - 30" text-anchor="left">{{ conditions.constants.pev | number:'1.0-3' }} mmHg (P<tspan style="font-size: 6pt" baseline-shift="sub">V</tspan>)</text>
+    </g>
+    <g>
+      <line class="unselectable" *ngFor="let cc of ccLines; index as i" (mouseover)="displayJcc(i)" (mouseleave)="unfocusJcc(i)" [@overLine]="ccLines[i].focused ? 'hover' : 'unhover'"
+        [attr.x1]="cc.x1" [attr.y1]="cc.y1" [attr.x2]="cc.x2" [attr.y2]="cc.y2" stroke-width="3" stroke="#1e88e5"></line>
+      <g class="unselectable" *ngFor="let tick of degreeTicks; index as deg">
+        <line
+          *ngIf="deg % 10 == 0"
+          [attr.x1]="tick.x1"
+          [attr.y1]="tick.y1"
+          [attr.x2]="tick.x2"
+          [attr.y2]="tick.y2"
+          [attr.stroke-width]="tick.strokeWidth"
+          stroke="black"></line>
+        <text class="unselectable" [ngStyle]="{'font-size': tick.text.fontSize.toString()+'pt'}" *ngIf="deg % 20 == 0" [attr.x]="tick.text.x" [attr.y]="tick.text.y" [attr.text-anchor]="tick.text.anchor">{{ deg }}&deg;</text>
+      </g>
+      <g>
+        <path class="unselectable" *ngFor="let n of nodeArcs; index as i" (mouseover)="displayVal(n)" [attr.d]="nodeArcs[i].d" [attr.stroke]="nodeArcs[i].colorP" [attr.stroke-width]="circleProps.strokeWidth" fill-opacity="0"></path>
+      </g>
+      <circle [attr.r]="circleProps.radius - circleProps.strokeWidth / 2 - 6.7"
+              stroke="#e53935"
+              stroke-width="25"
+              fill-opacity="0"
+              [attr.cx]="circleProps.centerX"
+              [attr.cy]="circleProps.centerY"></circle>
+      <text style="font-size: 10pt" class="unselectable"><textPath href="#scPath" [attr.startOffset]="(circleProps.radius * 3.14) * .39">Schlemm's Canal</textPath></text>
+      <text style="font-size: 10pt" class="unselectable"><textPath href="#ccPath" [attr.startOffset]="((circleProps.radius + 1.1 * circleProps.strokeWidth) * 3.14) * .41">Collector Channels</textPath></text>
+      <text style="font-size: 10pt" class="unselectable"><textPath href="#tmPath" [attr.startOffset]="((circleProps.radius - circleProps.strokeWidth / 2 - 9) * 3.14) * .35">Trabecular Meshwork</textPath></text>
+      <text style="font-size: 10pt" class="unselectable" [attr.x]="circleProps.centerX" [attr.y]="circleProps.centerY" text-anchor="middle">Anterior Chamber</text>
+    </g>
+  </svg>
+  <div fxLayout="row" fxLayoutAlign="space-around">
+    <div class="solution-info" fxFlex="1 1 30%" fxLayout="column" fxLayoutAlign="space-around">
+      <b>Whole Eye</b>
+      <span fxLayout="row" fxLayoutAlign="space-between"><h4 class="info-item">IOP:</h4> <p class="info-item">{{solution.iop | number:'1.0-2'}} mmHg</p></span>
+      <span fxLayout="row" fxLayoutAlign="space-between"><h4 class="info-item">Flowrate:</h4> <p class="info-item">{{solution.flowrate | number:'1.0-2'}} &mu;L/min.</p></span>
+    </div>
+    <div class="solution-info" fxFlex="1 1 45%" fxLayout="column" fxLayoutAlign="space-around">
+      <b>Local</b>
+      <div *ngIf="nodeHl">
+        <span fxLayout="row" fxLayoutAlign="space-between"><h4 class="info-item">&theta;:</h4> <p class="info-item">{{ hln.theta | number:'1.1-1' }}&deg;</p></span>
+        <span fxLayout="row" fxLayoutAlign="space-between"><h4 class="info-item">P<sub>SC</sub>:</h4> <p class="info-item">{{ hln.pressure | number:'1.2-2' }} mmHg</p></span>
+        <span fxLayout="row" fxLayoutAlign="space-between"><h4 class="info-item">Canal Height:</h4> <p class="info-item">{{ hln.height | number:'1.2-2' }} &mu;m</p></span>
+      </div>
+      <div *ngIf="!nodeHl && !ccHl">
+        Mouse over Schlemm's Canal to view local pressure and canal height.
+        <span *ngIf="!ccHl">Mouse over a collector channel to view its flowrate.</span>
+      </div>
+      <div *ngIf="ccHl">
+        <span fxLayout="row" fxLayoutAlign="space-between"><h4 class="info-item">J<sub>CC</sub>:</h4> <p class="info-item">{{ hlcc | number:'1.0-2' }} &mu;L/min.</p></span>
+      </div>
+    </div>
+  </div>
+</div>

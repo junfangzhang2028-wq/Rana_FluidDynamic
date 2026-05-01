@@ -1,0 +1,65 @@
+<h1 mat-dialog-title>Edit Model Constants</h1>
+<mat-dialog-content>
+  <mat-form-field class="constant">
+    <mat-label>Max Error</mat-label>
+    <input placeholder="Max Error" matInput type="number" [(ngModel)]="data.constants.max_error">
+    <mat-icon matSuffix matTooltip="Maximum acceptable residual to establish convergence. Can be used to force convergence in non-converging scenarios" matTooltipPositon="right">
+      help
+    </mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>M</mat-label>
+    <input placeholder="M" matInput type="number" [(ngModel)]="data.constants.m">
+    <mat-icon matSuffix matTooltip="Number of nodes between CCs. Only used in determining matrix size (# of nodes = N*M)" matTooltipPositon="right">
+      help
+    </mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>E<sub>TM</sub> (mmHg)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.constants.etm">
+    <mat-icon matSuffix matTooltip="Young's modulus of TM. Changing this will also change Ks, unless hs is adjusted accordingly." matTooltipPositon="right">
+      help
+    </mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>h<sub>0</sub> (&mu;)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.constants.h0" [disabled]="data.variable_h0">
+    <mat-icon matSuffix matTooltip="Undeformed height of SC">help</mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>R<sub>TM</sub> (mmHg/&mu;L/min)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.constants.rtm" [disabled]="data.variable_rtm">
+    <mat-icon matSuffix="" matTooltip="Overall resistance of TM" matTooltipPositon="right">
+      help
+    </mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>h<sub>S</sub> (&mu;m)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.constants.hs">
+    <mat-icon matSuffix matTooltip="Height at which the septae begin to support the canal. Changing this will also change Ks unless Etm is adjusted accordingly." matTooltipPositon="right">
+      help
+    </mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>R<sub>CC</sub> (mmHg/&mu;L/min)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.constants.rcc">
+    <mat-icon matSuffix matTooltip="Overall resistance of CCs. If not specified a linear relationship with IOP is used." matTooltipPositon="right">
+      help
+    </mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>P<sub>v</sub> (mmHg)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.constants.pev">
+    <mat-icon matSuffix matTooltip="Episcleral venous pressure" matTooltipPositon="right">
+      help
+    </mat-icon>
+  </mat-form-field>
+  <mat-form-field class="constant">
+    <mat-label>Q<sub>U</sub> (&mu;L/min)</mat-label>
+    <input matInput type="number" [(ngModel)]="data.constants.qu" [disabled]="!data.unconventional">
+    <mat-icon matSuffix matTooltip="Unconventional outflow rate. Only enabled if unconventional outflow is enabled on the main screen." matTooltipPosition="right">help</mat-icon>
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions fxLayout="row" fxLayoutAlign="end">
+  <button mat-button color="primary" [mat-dialog-close]="data">Save</button>
+</mat-dialog-actions>

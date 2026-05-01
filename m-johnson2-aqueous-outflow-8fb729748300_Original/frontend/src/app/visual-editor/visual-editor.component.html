@@ -1,0 +1,36 @@
+<svg #circle [attr.height]="getContainerWidth()" [attr.width]="getContainerWidth()">
+  <defs>
+    <path id="scPath" [attr.d]="'M '+(props.centerX - props.radius).toString()+' '+props.centerY.toString()+' A '+props.radius.toString()+' '+props.radius.toString()+' 0 0 1 '+(props.centerX + props.radius).toString()+' '+ props.centerY.toString()"></path>
+    <path id="ccPath" [attr.d]="'M '+(props.centerX - props.radius - 1.1 * props.strokeWidth).toString()+' '+props.centerY.toString()+' A '+(props.radius + 1.1 * props.strokeWidth).toString()+' '+(props.radius + 1.1 * props.strokeWidth).toString()+' 0 0 1 '+(props.centerX + props.radius + 1.1 * props.strokeWidth).toString()+' '+ props.centerY.toString()"></path>
+    <path id="tmPath" [attr.d]="'M '+(props.centerX - props.radius + props.strokeWidth / 2 + 9).toString()+' '+props.centerY.toString()+' A '+(props.radius - props.strokeWidth / 2 - 9).toString()+' '+(props.radius - props.strokeWidth / 2 - 9).toString()+' 0 0 1 '+(props.centerX + props.radius - props.strokeWidth / 2 - 9).toString()+' '+ props.centerY.toString()"></path>
+  </defs>
+  <g>
+    <g *ngFor="let cc of ccs; index as i" cc-line [circle]="props" [cc]="ccs[i]" (ccChange)="onCCChange($event)"></g>
+<!--    <circle-->
+<!--      [attr.r]="props.radius"-->
+<!--      stroke="grey"-->
+<!--      [attr.stroke-width]="props.strokeWidth"-->
+<!--      opacity="0.4"-->
+<!--      fill-opacity="0"-->
+<!--      [attr.cx]="props.centerX"-->
+<!--      [attr.cy]="props.centerY"></circle>-->
+    <g class="unselectable" *ngFor="let s of sc; index as i" sc-segment [circle]="props" [seg]="sc[i]" (segChange)="onSCChange($event)"></g>
+    <g class="unselectable" *ngFor="let tick of degreeTicks; index as deg">
+      <line
+        *ngIf="deg % 10 == 0"
+        [attr.x1]="tick.x1"
+        [attr.y1]="tick.y1"
+        [attr.x2]="tick.x2"
+        [attr.y2]="tick.y2"
+        [attr.stroke-width]="tick.strokeWidth"
+        stroke="black"></line>
+      <text class="unselectable" [ngStyle]="{'font-size': tick.text.fontSize.toString()+'pt'}" *ngIf="deg % 20 == 0" [attr.x]="tick.text.x" [attr.y]="tick.text.y" [attr.text-anchor]="tick.text.anchor">{{ deg }}&deg;</text>
+    </g>
+    <g class="tm-segment" *ngFor="let s of tm; index as i" tm-segment [circle]="props" [seg]="tm[i]" (segChange)="onTMChange($event)"></g>
+    <g class="surgery-arc" *ngFor="let a of arcs; index as i" surgery-arc [circle]="props" [arc]="arcs[i]" (arcChange)="onArcChange($event)"></g>
+    <text style="font-size: 10pt" class="unselectable"><textPath href="#scPath" [attr.startOffset]="(props.radius * 3.14) * .39">Schlemm's Canal</textPath></text>
+    <text style="font-size: 10pt" class="unselectable"><textPath href="#ccPath" [attr.startOffset]="((props.radius + 1.1 * props.strokeWidth) * 3.14) * .41">Collector Channels</textPath></text>
+    <text style="font-size: 10pt" class="unselectable"><textPath href="#tmPath" [attr.startOffset]="((props.radius - props.strokeWidth / 2 - 9) * 3.14) * .33">Trabecular Meshwork</textPath></text>
+    <text style="font-size: 10pt" class="unselectable" [attr.x]="props.centerX" [attr.y]="props.centerY" text-anchor="middle">Anterior Chamber</text>
+  </g>
+</svg>
