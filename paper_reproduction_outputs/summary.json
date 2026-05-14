@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-01T12:09:19.622740",
+  "generated_at": "2026-05-01T12:28:20.981252",
   "project_dir": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\m-johnson2-aqueous-outflow-8fb729748300_Modified",
   "output_dir": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs",
   "notes": [
@@ -103,10 +103,10 @@
       }
     },
     "baseline_height_distribution": {
-      "status": "failed",
+      "status": "ok",
       "label": "baseline_height_distribution",
-      "figure": null,
-      "error": "get_h() missing 1 required positional argument: 'node'"
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\04_baseline_height_distribution.png",
+      "result": {}
     },
     "baseline_collector_channel_flow": {
       "status": "ok",
@@ -155,10 +155,10 @@
       }
     },
     "istent_height_distribution": {
-      "status": "failed",
+      "status": "ok",
       "label": "istent_height_distribution",
-      "figure": null,
-      "error": "IOP must be greater than episcleral venous pressure"
+      "figure": "C:\\Users\\OpticentHealth\\Documents\\GitHub\\Rana_FluidDynamicModel\\paper_reproduction_outputs\\figures\\11_istent_height_distribution.png",
+      "result": {}
     },
     "istent_collector_channel_flow": {
       "status": "ok",
@@ -173,8 +173,8 @@
     }
   },
   "counts": {
-    "ok_plots": 10,
-    "failed_plots": 2,
+    "ok_plots": 12,
+    "failed_plots": 0,
     "ok_metrics": 7,
     "failed_metrics": 0
   }

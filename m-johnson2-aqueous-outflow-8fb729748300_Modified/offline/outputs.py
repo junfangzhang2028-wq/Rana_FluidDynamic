@@ -595,7 +595,7 @@ def plot_height_dist(iop=7.0, qt=2.0, geometry='ellipse', show_all=True, show_p=
     heights = np.zeros(len(sol['pressure']))
 
     for i, p in enumerate(sol['pressure']):
-        heights[i] = md.get_h(p, sol['iop'])
+        heights[i] = md.get_h(p, sol['iop'], i)
 
     if stents is not None:
         for loc, stent in stents:
