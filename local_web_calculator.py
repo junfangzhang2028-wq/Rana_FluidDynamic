@@ -576,10 +576,24 @@ def build_html() -> str:
       min-height: 100vh;
     }
     aside {
-      padding: 20px;
+      padding: 16px 16px 14px;
       border-right: 1px solid var(--line);
       background: rgba(255,255,255,0.84);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 100vh;
+    }
+    .aside-scroll {
+      flex: 1 1 auto;
       overflow-y: auto;
+      padding-right: 4px;
+    }
+    .aside-actions {
+      flex: 0 0 auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.82) 28%, rgba(255,255,255,0.96));
     }
     main {
       display: grid;
@@ -613,20 +627,64 @@ def build_html() -> str:
       line-height: 1.45;
       font-size: 13px;
     }
-    .section {
-      padding: 14px 0;
-      border-top: 1px solid var(--line);
+    .panel {
+      margin-bottom: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.76);
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(23, 44, 36, 0.03);
     }
-    .section h2 {
+    .panel summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      user-select: none;
+      background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(247,250,246,0.88));
+    }
+    .panel summary::-webkit-details-marker {
+      display: none;
+    }
+    .panel[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+    .panel-head {
+      min-width: 0;
+    }
+    .panel-head h2 {
       margin: 0 0 10px;
       font-size: 14px;
       text-transform: uppercase;
       letter-spacing: .08em;
       color: var(--muted);
     }
+    .panel-head h2 {
+      margin: 0;
+      line-height: 1.2;
+    }
+    .panel-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .panel-toggle {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      flex: 0 0 auto;
+    }
+    .section-body {
+      padding: 12px 14px 14px;
+    }
     label {
       display: block;
-      margin: 10px 0 5px;
+      margin: 9px 0 5px;
       font-size: 13px;
       color: var(--muted);
     }
@@ -642,7 +700,7 @@ def build_html() -> str:
     }
     textarea {
       width: 100%;
-      min-height: 62px;
+      min-height: 54px;
       border: 1px solid var(--line);
       border-radius: 6px;
       padding: 8px 10px;
@@ -661,7 +719,7 @@ def build_html() -> str:
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 10px;
       color: var(--ink);
       font-size: 14px;
     }
@@ -681,10 +739,24 @@ def build_html() -> str:
       cursor: pointer;
     }
     button:hover { background: var(--accent-dark); }
+    .solve-button {
+      margin-top: 0;
+      height: 44px;
+      border-radius: 10px;
+      font-size: 15px;
+    }
     .grid2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
+    }
+    .compact-label {
+      margin-top: 6px;
+    }
+    .subtle-divider {
+      height: 1px;
+      margin: 12px 0 6px;
+      background: linear-gradient(90deg, rgba(216,223,215,0.18), rgba(216,223,215,0.85), rgba(216,223,215,0.18));
     }
     .card {
       border: 1px solid var(--line);
@@ -839,169 +911,238 @@ def build_html() -> str:
 <body>
   <div class="app">
     <aside>
-      <h1>Aqueous Outflow Model</h1>
-      <p class="sub">Pure local calculator. The browser talks to this Python server, and the server calls the local solver.</p>
+      <div class="aside-scroll">
+        <h1>Aqueous Outflow Model</h1>
+        <p class="sub">Pure local calculator. The browser talks to this Python server, and the server calls the local solver.</p>
 
-      <div class="section">
-        <h2>Solver</h2>
-        <label>Mode</label>
-        <select id="mode">
-          <option value="constant flow">constant flow</option>
-          <option value="constant pressure">constant pressure</option>
-        </select>
-        <label>Geometry</label>
-        <select id="geometry">
-          <option value="ellipse">ellipse</option>
-          <option value="rectangle">rectangle</option>
-        </select>
-        <div class="grid2">
-          <div>
-            <label id="iop_label">Baseline IOP</label>
-            <input id="iop" type="number" step="0.1" value="15.09" />
-          </div>
-          <div><label>Qt</label><input id="qt" type="number" step="0.1" value="2.0" /></div>
-        </div>
-        <div id="iop_hint" class="hint">In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled.</div>
-        <div class="grid2">
-          <div><label>Pev</label><input id="pev" type="number" step="0.1" value="8.0" /></div>
-          <div><label>Rtm</label><input id="rtm" type="number" step="0.1" placeholder="default" /></div>
-        </div>
-        <div class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP (constant flow)</span></div>
-        <div class="hint">Auto RTM follows the online calculator idea: it uses a baseline eye with no surgeries and the default CC distribution to infer Rtm.</div>
-      </div>
-
-      <div class="section">
-        <h2>Constants</h2>
-        <div class="grid2">
-          <div><label>N collector channels</label><input id="n" type="number" step="1" value="30" /></div>
-          <div><label>M nodes per CC</label><input id="m" type="number" step="1" value="40" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>Etm</label><input id="etm" type="number" step="0.1" value="13" /></div>
-          <div><label>h0 (um)</label><input id="h0" type="number" step="0.1" value="20" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>hs (um)</label><input id="hs" type="number" step="0.1" value="3.0" /></div>
-          <div><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>Qu</label><input id="qu" type="number" step="0.01" value="0.28" /></div>
-          <div><label>max error</label><input id="max_error" type="number" step="0.00001" value="0.0001" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>Stent beta</label><input id="beta" type="number" step="0.1" placeholder="1.0" /></div>
-          <div class="checkline"><input id="unconventional" type="checkbox" /><span>Use unconventional flow</span></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <h2>Segment Profiles</h2>
-        <label>TM resistance profile</label>
-        <textarea id="rtm_profile" placeholder="Examples: 24 or 24,24,24,... (12 values) or 1:24, 2:30, ..., 12:24"></textarea>
-        <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar RTM and auto RTM.</div>
-        <label>SC baseline height profile</label>
-        <textarea id="h0_profile" placeholder="Examples: 20 or 20,20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
-        <div class="hint">Takes N segment values, where N is the current collector-channel count. If provided, this overrides scalar h0.</div>
-      </div>
-
-      <div class="section">
-        <h2>Collector Channels</h2>
-        <label>Manual CC distribution</label>
-        <textarea id="ccs" placeholder="Example: 0:1, 40:1, 80:0.5, 120:2"></textarea>
-        <div class="hint">Format is node:relative conductance. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
-        <div class="hint">If only a node is provided, ratio defaults to 1; for example 0, 40, 80.</div>
-      </div>
-
-      <div class="section">
-        <h2>Intervention</h2>
-        <label>Surgery</label>
-        <select id="surgery">
-          <option>None</option>
-          <option>Trabeculotomy</option>
-          <option>YAG holes</option>
-          <option>iStent</option>
-        </select>
-        <div class="grid2">
-          <div>
-            <label>Trab hours</label>
-            <select id="trab_hours">
-              <option>1</option>
-              <option>4</option>
-              <option>12</option>
+        <details class="panel" id="panel_solver" open>
+          <summary>
+            <div class="panel-head">
+              <h2>Solver</h2>
+              <p>Mode, pressure-flow target, and baseline resistance.</p>
+            </div>
+            <span class="panel-toggle">Core</span>
+          </summary>
+          <div class="section-body">
+            <label>Mode</label>
+            <select id="mode">
+              <option value="constant flow">constant flow</option>
+              <option value="constant pressure">constant pressure</option>
             </select>
-          </div>
-          <div><label>YAG holes</label><input id="yag_holes" type="number" step="1" value="2" /></div>
-        </div>
-        <input id="stent_node" type="hidden" value="0" />
-        <label>Trabeculotomy ranges</label>
-        <textarea id="trabeculotomies" placeholder="Example: 0-99, 300-399"></textarea>
-        <div class="hint">Ranges are SC node indexes. Leave blank to use Trab hours when Surgery is Trabeculotomy.</div>
-        <label>Sinusotomy ranges</label>
-        <textarea id="sinusotomies" placeholder="Example: 120-180, 620-700"></textarea>
-        <div class="hint">Sinusotomy ranges can be combined with any selected surgery.</div>
-        <label>YAG hole nodes</label>
-        <input id="yag_holes_list" type="text" placeholder="Example: 0, 200, 400" />
-        <div class="hint">Leave blank to use YAG holes count when Surgery is YAG holes.</div>
-        <label>iStent nodes</label>
-        <input id="stent_nodes" type="text" placeholder="Example: 0, 300, 600" />
-        <div class="hint">Each node gets the stent model configured below. If Surgery is iStent and this is blank, node 0 is used.</div>
-      </div>
-
-      <div class="section">
-        <h2>Stent Editor</h2>
-        <label>Name</label>
-        <input id="stent_name" type="text" value="Custom iStent" />
-        <div class="grid2">
-          <div><label>Length (um)</label><input id="stent_length" type="number" step="10" value="1000" /></div>
-          <div><label>Inlet offset (um)</label><input id="stent_loc_inlet" type="number" step="10" value="0" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>Width (um)</label><input id="stent_width" type="number" step="1" value="120" /></div>
-          <div><label>Height (um)</label><input id="stent_height" type="number" step="1" value="60" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>Before dilation nodes</label><input id="stent_l_before" type="number" step="1" value="0" /></div>
-          <div><label>After dilation nodes</label><input id="stent_l_after" type="number" step="1" value="0" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>After height (um)</label><input id="stent_h_after" type="number" step="1" placeholder="same as height" /></div>
-          <div><label>Inlet conductance</label><input id="stent_g_inlet" type="number" step="0.001" value="0" /></div>
-        </div>
-        <div class="grid2">
-          <div>
-            <label>Stent geometry</label>
-            <select id="stent_geometry">
-              <option value="">same as solver</option>
+            <label>Geometry</label>
+            <select id="geometry">
               <option value="ellipse">ellipse</option>
               <option value="rectangle">rectangle</option>
             </select>
+            <div class="grid2">
+              <div>
+                <label id="iop_label">Baseline IOP</label>
+                <input id="iop" type="number" step="0.1" value="15.09" />
+              </div>
+              <div><label>Qt</label><input id="qt" type="number" step="0.1" value="2.0" /></div>
+            </div>
+            <div id="iop_hint" class="hint">In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled.</div>
+            <div class="grid2">
+              <div><label>Pev</label><input id="pev" type="number" step="0.1" value="8.0" /></div>
+              <div><label>Rtm</label><input id="rtm" type="number" step="0.1" placeholder="default" /></div>
+            </div>
+            <div class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP</span></div>
+            <div class="hint">Matches the online calculator idea: infer Rtm from a baseline eye with no surgeries and default CC distribution.</div>
           </div>
-          <div class="checkline"><input id="stent_two_way" type="checkbox" checked /><span>Two-way inlet</span></div>
-        </div>
-        <label>Windowed stent options</label>
-        <div class="grid2">
-          <div><label>Number of windows</label><input id="stent_n_windows" type="number" step="1" value="0" /></div>
-          <div><label>Window length (um)</label><input id="stent_l_window" type="number" step="10" placeholder="required if windows > 0" /></div>
-        </div>
-        <div class="grid2">
-          <div><label>Window height (um)</label><input id="stent_h_window" type="number" step="1" placeholder="required if windows > 0" /></div>
-          <div><label>Spine length (um)</label><input id="stent_l_spine" type="number" step="10" placeholder="required if windows > 0" /></div>
-        </div>
-        <label>Spine height (um)</label>
-        <input id="stent_h_spine" type="number" step="1" placeholder="required if windows > 0" />
-        <div class="hint">For a simple iStent, leave window count at 0. For devices with windows/spines, fill all windowed stent fields.</div>
+        </details>
+
+        <details class="panel" id="panel_intervention" open>
+          <summary>
+            <div class="panel-head">
+              <h2>Intervention</h2>
+              <p>Collector-channel layout and surgery-specific inputs.</p>
+            </div>
+            <span class="panel-toggle">Main</span>
+          </summary>
+          <div class="section-body">
+            <label>Surgery</label>
+            <select id="surgery">
+              <option>None</option>
+              <option>Trabeculotomy</option>
+              <option>YAG holes</option>
+              <option>iStent</option>
+            </select>
+            <div id="surgery_defaults" class="grid2">
+              <div id="trab_hours_wrap">
+                <label>Trab hours</label>
+                <select id="trab_hours">
+                  <option>1</option>
+                  <option>4</option>
+                  <option>12</option>
+                </select>
+              </div>
+              <div id="yag_count_wrap">
+                <label>YAG holes</label><input id="yag_holes" type="number" step="1" value="2" />
+              </div>
+            </div>
+            <input id="stent_node" type="hidden" value="0" />
+
+            <label>Trabeculotomy ranges</label>
+            <textarea id="trabeculotomies" placeholder="Example: 0-99, 300-399"></textarea>
+            <div id="trabeculotomy_hint" class="hint">Ranges are SC node indexes. Leave blank to use Trab hours when Surgery is Trabeculotomy.</div>
+
+            <label>Sinusotomy ranges</label>
+            <textarea id="sinusotomies" placeholder="Example: 120-180, 620-700"></textarea>
+            <div class="hint">Sinusotomy ranges can be combined with any selected surgery.</div>
+
+            <label>YAG hole nodes</label>
+            <input id="yag_holes_list" type="text" placeholder="Example: 0, 200, 400" />
+            <div id="yag_nodes_hint" class="hint">Leave blank to use the YAG hole count above when Surgery is YAG holes.</div>
+
+            <label>iStent nodes</label>
+            <input id="stent_nodes" type="text" placeholder="Example: 0, 300, 600" />
+            <div id="stent_nodes_hint" class="hint">Each node gets the stent model configured below. If Surgery is iStent and this is blank, node 0 is used.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_constants">
+          <summary>
+            <div class="panel-head">
+              <h2>Constants</h2>
+              <p>Equivalent to the online app's Edit Constants drawer.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <div class="grid2">
+              <div><label>N collector channels</label><input id="n" type="number" step="1" value="30" /></div>
+              <div><label>M nodes per CC</label><input id="m" type="number" step="1" value="40" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Etm</label><input id="etm" type="number" step="0.1" value="13" /></div>
+              <div><label>h0 (um)</label><input id="h0" type="number" step="0.1" value="20" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>hs (um)</label><input id="hs" type="number" step="0.1" value="3.0" /></div>
+              <div><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Qu</label><input id="qu" type="number" step="0.01" value="0.28" /></div>
+              <div><label>max error</label><input id="max_error" type="number" step="0.00001" value="0.0001" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Stent beta</label><input id="beta" type="number" step="0.1" placeholder="1.0" /></div>
+              <div class="checkline"><input id="unconventional" type="checkbox" /><span>Use unconventional flow</span></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_profiles">
+          <summary>
+            <div class="panel-head">
+              <h2>Segment Profiles</h2>
+              <p>Clock-hour TM resistance and segment-wise SC baseline height.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <label>TM resistance profile</label>
+            <textarea id="rtm_profile" placeholder="Examples: 24 or 24,24,24,... (12 values) or 1:24, 2:30, ..., 12:24"></textarea>
+            <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar RTM and auto RTM.</div>
+            <div class="subtle-divider"></div>
+            <label>SC baseline height profile</label>
+            <textarea id="h0_profile" placeholder="Examples: 20 or 20,20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
+            <div class="hint">Takes N segment values, where N is the current collector-channel count. If provided, this overrides scalar h0.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_ccs">
+          <summary>
+            <div class="panel-head">
+              <h2>Collector Channels</h2>
+              <p>Manual non-uniform distribution, closer to the online editor.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <label>Manual CC distribution</label>
+            <textarea id="ccs" placeholder="Example: 0:1, 40:1, 80:0.5, 120:2"></textarea>
+            <div class="hint">Format is node:relative conductance. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
+            <div class="hint">If only a node is provided, ratio defaults to 1; for example 0, 40, 80.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_stent">
+          <summary>
+            <div class="panel-head">
+              <h2>Stent Editor</h2>
+              <p>Custom geometry for iStent-style local simulations.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <label>Name</label>
+            <input id="stent_name" type="text" value="Custom iStent" />
+            <div class="grid2">
+              <div><label>Length (um)</label><input id="stent_length" type="number" step="10" value="1000" /></div>
+              <div><label>Inlet offset (um)</label><input id="stent_loc_inlet" type="number" step="10" value="0" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Width (um)</label><input id="stent_width" type="number" step="1" value="120" /></div>
+              <div><label>Height (um)</label><input id="stent_height" type="number" step="1" value="60" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Before dilation nodes</label><input id="stent_l_before" type="number" step="1" value="0" /></div>
+              <div><label>After dilation nodes</label><input id="stent_l_after" type="number" step="1" value="0" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>After height (um)</label><input id="stent_h_after" type="number" step="1" placeholder="same as height" /></div>
+              <div><label>Inlet conductance</label><input id="stent_g_inlet" type="number" step="0.001" value="0" /></div>
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Stent geometry</label>
+                <select id="stent_geometry">
+                  <option value="">same as solver</option>
+                  <option value="ellipse">ellipse</option>
+                  <option value="rectangle">rectangle</option>
+                </select>
+              </div>
+              <div class="checkline"><input id="stent_two_way" type="checkbox" checked /><span>Two-way inlet</span></div>
+            </div>
+            <div class="subtle-divider"></div>
+            <label>Windowed stent options</label>
+            <div class="grid2">
+              <div><label class="compact-label">Number of windows</label><input id="stent_n_windows" type="number" step="1" value="0" /></div>
+              <div><label class="compact-label">Window length (um)</label><input id="stent_l_window" type="number" step="10" placeholder="required if windows > 0" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Window height (um)</label><input id="stent_h_window" type="number" step="1" placeholder="required if windows > 0" /></div>
+              <div><label>Spine length (um)</label><input id="stent_l_spine" type="number" step="10" placeholder="required if windows > 0" /></div>
+            </div>
+            <label>Spine height (um)</label>
+            <input id="stent_h_spine" type="number" step="1" placeholder="required if windows > 0" />
+            <div class="hint">For a simple iStent, leave window count at 0. For devices with windows/spines, fill all windowed stent fields.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_plot" open>
+          <summary>
+            <div class="panel-head">
+              <h2>Plot</h2>
+              <p>Choose which profile is shown in the line chart.</p>
+            </div>
+            <span class="panel-toggle">View</span>
+          </summary>
+          <div class="section-body">
+            <label>Plot type</label>
+            <select id="plot_type">
+              <option value="pressure">Pressure distribution</option>
+              <option value="height">Canal height</option>
+              <option value="jcc">Collector channel flow</option>
+            </select>
+            <div id="status" class="status"></div>
+          </div>
+        </details>
       </div>
 
-      <div class="section">
-        <h2>Plot</h2>
-        <label>Plot type</label>
-        <select id="plot_type">
-          <option value="pressure">Pressure distribution</option>
-          <option value="height">Canal height</option>
-          <option value="jcc">Collector channel flow</option>
-        </select>
-        <button id="solveBtn">Solve locally</button>
-        <div id="status" class="status"></div>
+      <div class="aside-actions">
+        <button id="solveBtn" class="solve-button">Solve locally</button>
       </div>
     </aside>
 
@@ -1488,6 +1629,38 @@ def build_html() -> str:
       $("rtm").placeholder = hasVariableRtmProfile ? "overridden by TM profile" : (autoRtmEnabled ? "derived automatically" : "default");
     }
 
+    function updateInterventionUI() {
+      const surgery = $("surgery").value;
+      const hasTrabRanges = $("trabeculotomies").value.trim().length > 0;
+      const hasYagNodes = $("yag_holes_list").value.trim().length > 0;
+      const hasStentNodes = $("stent_nodes").value.trim().length > 0;
+
+      $("trab_hours_wrap").classList.toggle("hidden", surgery !== "Trabeculotomy");
+      $("yag_count_wrap").classList.toggle("hidden", surgery !== "YAG holes");
+
+      $("trabeculotomy_hint").textContent = surgery === "Trabeculotomy"
+        ? (hasTrabRanges
+            ? "Explicit ranges will override the preset clock-hour trabeculotomy."
+            : "Leave blank to use the selected Trab hours preset.")
+        : "Optional SC node ranges. This stays available even if Surgery is not set to Trabeculotomy.";
+
+      $("yag_nodes_hint").textContent = surgery === "YAG holes"
+        ? (hasYagNodes
+            ? "Explicit YAG node locations will override the YAG hole count preset."
+            : "Leave blank to use the YAG hole count above.")
+        : "Optional explicit YAG node locations.";
+
+      $("stent_nodes_hint").textContent = surgery === "iStent"
+        ? (hasStentNodes
+            ? "All listed nodes will receive the stent model from the editor below."
+            : "If left blank, node 0 will receive one stent.")
+        : "Optional explicit stent nodes. If you fill these, the stent editor below is used even without selecting iStent surgery.";
+
+      if (surgery === "iStent" || hasStentNodes) {
+        $("panel_stent").open = true;
+      }
+    }
+
     function statusFromMeta(meta) {
       if (!meta) return "";
       let parts = [];
@@ -1693,6 +1866,10 @@ def build_html() -> str:
       updateModeUI();
       markResultDirty();
     });
+    $("surgery").addEventListener("change", () => {
+      updateInterventionUI();
+      markResultDirty();
+    });
     $("auto_rtm").addEventListener("change", () => {
       updateModeUI();
       markResultDirty();
@@ -1701,12 +1878,16 @@ def build_html() -> str:
       updateModeUI();
       markResultDirty();
     });
+    $("trabeculotomies").addEventListener("input", updateInterventionUI);
+    $("yag_holes_list").addEventListener("input", updateInterventionUI);
+    $("stent_nodes").addEventListener("input", updateInterventionUI);
     document.querySelectorAll("input, select, textarea").forEach((element) => {
-      if (["mode", "auto_rtm", "rtm_profile", "plot_type"].includes(element.id)) return;
+      if (["mode", "surgery", "auto_rtm", "rtm_profile", "plot_type", "trabeculotomies", "yag_holes_list", "stent_nodes"].includes(element.id)) return;
       element.addEventListener("input", markResultDirty);
       element.addEventListener("change", markResultDirty);
     });
     updateModeUI();
+    updateInterventionUI();
     refreshVisuals();
     window.addEventListener("load", solve);
   </script>
