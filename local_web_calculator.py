@@ -154,6 +154,83 @@ def parse_ccs(text, max_nodes=None):
     return np.array(ccs, dtype=md.dt)
 
 
+def parse_segment_profile(text, expected_count, label, allow_zero=True):
+    if not text or not str(text).strip():
+        return None
+
+    chunks = []
+    for chunk in str(text).replace(";", ",").replace("\n", ",").split(","):
+        part = chunk.strip()
+        if part:
+            chunks.append(part)
+
+    if not chunks:
+        return None
+
+    keyed = any((":" in chunk or "=" in chunk) for chunk in chunks)
+    values = [None] * expected_count
+
+    if keyed:
+        for chunk in chunks:
+            if ":" in chunk:
+                idx_text, value_text = chunk.split(":", 1)
+            elif "=" in chunk:
+                idx_text, value_text = chunk.split("=", 1)
+            else:
+                raise ValueError(f"{label} profile mixes keyed and unkeyed values.")
+
+            idx = int(float(idx_text.strip()))
+            if idx < 1 or idx > expected_count:
+                raise ValueError(f"{label} segment {idx} is outside the valid 1-{expected_count} range.")
+            value = float(value_text.strip())
+            if value < 0 or (not allow_zero and value == 0):
+                comparator = "greater than zero" if not allow_zero else "zero or greater"
+                raise ValueError(f"{label} values must be {comparator}.")
+            values[idx - 1] = value
+
+        missing = [str(i + 1) for i, value in enumerate(values) if value is None]
+        if missing:
+            raise ValueError(f"{label} profile is missing segment(s): {', '.join(missing)}.")
+    else:
+        raw_values = [float(chunk) for chunk in chunks]
+        for value in raw_values:
+            if value < 0 or (not allow_zero and value == 0):
+                comparator = "greater than zero" if not allow_zero else "zero or greater"
+                raise ValueError(f"{label} values must be {comparator}.")
+
+        if len(raw_values) == 1:
+            values = raw_values * expected_count
+        elif len(raw_values) == expected_count:
+            values = raw_values
+        else:
+            raise ValueError(
+                f"{label} profile needs either 1 value or exactly {expected_count} values; got {len(raw_values)}."
+            )
+
+    return values
+
+
+def expand_tm_profile(values, total_nodes):
+    expanded = np.zeros(total_nodes, dtype=md.dt)
+    count = len(values)
+    for idx, resistance in enumerate(values):
+        start = int(round(idx * total_nodes / count))
+        end = int(round((idx + 1) * total_nodes / count))
+        segment_len = max(1, end - start)
+        expanded[start:end] = resistance * segment_len
+    return expanded
+
+
+def expand_sc_profile(values, total_nodes):
+    expanded = np.zeros(total_nodes, dtype=md.dt)
+    count = len(values)
+    for idx, height in enumerate(values):
+        start = int(round(idx * total_nodes / count))
+        end = int(round((idx + 1) * total_nodes / count))
+        expanded[start:end] = height
+    return expanded
+
+
 def stent_from_payload(payload: dict) -> md.Stent:
     return build_istent(
         name=str(payload.get("stent_name") or "Custom stent"),
@@ -179,10 +256,84 @@ def parse_stent_nodes(text, payload: dict) -> list[tuple[int, md.Stent]]:
     return [(node, stent_from_payload(payload)) for node in parse_int_list(text)]
 
 
-def solution_to_jsonable(solution: dict, stents=None, ccs=None) -> dict:
+def default_trabeculotomies(hours: int) -> list[tuple[int, int]]:
+    if hours == 1:
+        return [(550, 650)]
+    if hours == 4:
+        return [(100, 200), (400, 500), (700, 800), (1000, 1100)]
+    if hours == 12:
+        return [(0, 1199)]
+    if hours == 0:
+        return []
+    raise ValueError("Hours must be one of 0, 1, 4, or 12.")
+
+
+def default_yag_holes(count: int) -> list[int]:
+    defaults = {
+        0: [],
+        1: [600],
+        2: [300, 900],
+        3: [200, 600, 1000],
+        4: [150, 450, 750, 1050],
+        5: [120, 360, 600, 840, 1080],
+        6: [100, 300, 500, 700, 900, 1100],
+    }
+    if count not in defaults:
+        raise ValueError("Invalid value of n. Use explicit hole nodes for more than 6 holes.")
+    return defaults[count]
+
+
+def estimate_rtm_from_baseline_iop(target_iop: float, base_kwargs: dict) -> float:
+    pev = float(base_kwargs.get("pev", 8.0))
+    if target_iop <= pev:
+        raise ValueError("Baseline IOP must be greater than episcleral venous pressure.")
+
+    solve_kwargs = dict(base_kwargs)
+    solve_kwargs.pop("rtm", None)
+    solve_kwargs.pop("ccs", None)
+    solve_kwargs.pop("trabeculotomies", None)
+    solve_kwargs.pop("sinusotomies", None)
+    solve_kwargs.pop("yag_holes", None)
+    solve_kwargs.pop("stents", None)
+
+    def solve_iop(rtm_value: float) -> float:
+        with contextlib.redirect_stdout(io.StringIO()):
+            result = ot.solve_cf(qt=2.0, rtm=rtm_value, **solve_kwargs)
+        return float(result["iop"])
+
+    low = 0.05
+    high = 8.0
+    low_iop = solve_iop(low)
+    high_iop = solve_iop(high)
+
+    if target_iop <= low_iop:
+        return low
+
+    expand_count = 0
+    while high_iop < target_iop and expand_count < 8:
+        high *= 1.75
+        high_iop = solve_iop(high)
+        expand_count += 1
+
+    if high_iop < target_iop:
+        raise ValueError("Could not match the requested baseline IOP with a reasonable Rtm range.")
+
+    for _ in range(28):
+        mid = 0.5 * (low + high)
+        mid_iop = solve_iop(mid)
+        if mid_iop < target_iop:
+            low = mid
+        else:
+            high = mid
+
+    return round(0.5 * (low + high), 4)
+
+
+def solution_to_jsonable(solution: dict, stents=None, ccs=None, meta=None) -> dict:
     pressure = [float(v) for v in solution.get("pressure", [])]
     jcc = [float(v) for v in solution.get("jcc", [])]
     iop = float(solution.get("iop", 0.0))
+    meta = dict(meta or {})
 
     heights = []
     for i, p in enumerate(pressure):
@@ -203,6 +354,22 @@ def solution_to_jsonable(solution: dict, stents=None, ccs=None) -> dict:
         x_jcc = list(range(len(jcc)))
         jcc_x_title = "Collector channel index"
 
+    meta["total_nodes"] = len(pressure)
+    meta["collector_channel_count"] = len(jcc)
+    if ccs is not None:
+        meta["ccs"] = [{"loc": int(loc), "ratio": float(ratio)} for loc, ratio in ccs]
+    if stents:
+        meta["stents"] = [
+            {
+                "loc": int(loc),
+                "name": str(stent),
+                "span_nodes": int(len(stent) + 1),
+                "inlet_index": int(getattr(stent, "loc_inlet", 0)),
+                "two_way": bool(getattr(stent, "two_way", False)),
+            }
+            for loc, stent in stents
+        ]
+
     return {
         "metrics": {
             "iop": float(solution.get("iop", 0.0)),
@@ -215,6 +382,7 @@ def solution_to_jsonable(solution: dict, stents=None, ccs=None) -> dict:
             "height": {"x": x_pressure, "y": heights},
             "jcc": {"x": x_jcc, "y": jcc, "x_title": jcc_x_title},
         },
+        "meta": meta,
     }
 
 
@@ -222,13 +390,14 @@ def solve_payload(payload: dict) -> dict:
     mode = payload.get("mode", "constant flow")
     surgery = payload.get("surgery", "None")
     geometry = payload.get("geometry", "ellipse")
+    meta = {}
 
     kwargs = {
         "geometry": geometry,
         "pev": finite_float(payload.get("pev"), 8.0),
     }
 
-    optional_float_keys = ("rtm", "etm", "h0", "hs", "rcc", "qu", "beta", "max_error")
+    optional_float_keys = ("etm", "h0", "hs", "rcc", "qu", "beta", "max_error")
     for key in optional_float_keys:
         value = finite_float(payload.get(key), None)
         if value is not None:
@@ -244,8 +413,42 @@ def solve_payload(payload: dict) -> dict:
     if payload.get("unconventional", False):
         kwargs["unconventional"] = True
 
+    total_nodes = int(kwargs.get("n", 30)) * int(kwargs.get("m", 40))
+    variable_rtm_profile = parse_segment_profile(payload.get("rtm_profile"), 12, "TM resistance", allow_zero=False)
+    if variable_rtm_profile is not None:
+        kwargs["variable_rtm"] = True
+        kwargs["rtm"] = expand_tm_profile(variable_rtm_profile, total_nodes)
+        meta["rtm_source"] = "tm_profile"
+        meta["tm_profile_segments"] = len(variable_rtm_profile)
+
+    manual_rtm = finite_float(payload.get("rtm"), None)
+    auto_rtm = finite_bool(payload.get("auto_rtm"), False)
+    if variable_rtm_profile is None and auto_rtm and mode == "constant flow":
+        baseline_iop = finite_float(payload.get("iop"), 15.09)
+        derived_rtm = estimate_rtm_from_baseline_iop(baseline_iop, kwargs)
+        kwargs["rtm"] = derived_rtm
+        meta["rtm_source"] = "baseline_iop"
+        meta["baseline_iop"] = baseline_iop
+        meta["rtm_used"] = derived_rtm
+    elif variable_rtm_profile is None and manual_rtm is not None:
+        kwargs["rtm"] = manual_rtm
+        meta["rtm_source"] = "manual"
+        meta["rtm_used"] = manual_rtm
+
+    variable_h0_profile = parse_segment_profile(
+        payload.get("h0_profile"),
+        int(kwargs.get("n", 30)),
+        "SC height",
+        allow_zero=True,
+    )
+    if variable_h0_profile is not None:
+        kwargs["variable_h0"] = True
+        kwargs["h0"] = expand_sc_profile(variable_h0_profile, total_nodes)
+        meta["h0_source"] = "sc_profile"
+        meta["sc_profile_segments"] = len(variable_h0_profile)
+
     stents = None
-    max_nodes = int(kwargs.get("n", 30)) * int(kwargs.get("m", 40))
+    max_nodes = total_nodes
     ccs = parse_ccs(payload.get("ccs"), max_nodes=max_nodes)
     explicit_trabeculotomies = parse_ranges(payload.get("trabeculotomies"))
     explicit_sinusotomies = parse_ranges(payload.get("sinusotomies"))
@@ -254,6 +457,28 @@ def solve_payload(payload: dict) -> dict:
     if not stent_nodes_text and surgery == "iStent":
         stent_nodes_text = payload.get("stent_node", "0")
     explicit_stents = parse_stent_nodes(stent_nodes_text, payload)
+
+    if explicit_trabeculotomies:
+        meta["trabeculotomies"] = [{"start": int(start), "end": int(end)} for start, end in explicit_trabeculotomies]
+        meta["trabeculotomy_source"] = "explicit"
+    elif surgery == "Trabeculotomy":
+        default_trab = default_trabeculotomies(int(finite_float(payload.get("trab_hours"), 1)))
+        meta["trabeculotomies"] = [{"start": int(start), "end": int(end)} for start, end in default_trab]
+        meta["trabeculotomy_source"] = "default_hours"
+
+    if explicit_sinusotomies:
+        meta["sinusotomies"] = [{"start": int(start), "end": int(end)} for start, end in explicit_sinusotomies]
+
+    if explicit_yag_holes:
+        meta["yag_holes"] = [int(node) for node in explicit_yag_holes]
+        meta["yag_source"] = "explicit"
+    elif surgery == "YAG holes":
+        default_holes = default_yag_holes(int(finite_float(payload.get("yag_holes"), 2)))
+        meta["yag_holes"] = [int(node) for node in default_holes]
+        meta["yag_source"] = "default_count"
+
+    if explicit_stents:
+        meta["stent_count"] = len(explicit_stents)
 
     if explicit_sinusotomies:
         kwargs["sinusotomies"] = explicit_sinusotomies
@@ -303,7 +528,7 @@ def solve_payload(payload: dict) -> dict:
                 kwargs["yag_holes"] = explicit_yag_holes
             solution = ot.solve_cf(qt=finite_float(payload.get("qt"), 2.0), **kwargs)
 
-    return solution_to_jsonable(solution, stents=stents, ccs=ccs)
+    return solution_to_jsonable(solution, stents=stents, ccs=ccs, meta=meta)
 
 
 def build_html() -> str:
@@ -324,6 +549,16 @@ def build_html() -> str:
       --accent: #147c72;
       --accent-dark: #0b5f58;
       --warn: #8a4b12;
+      --soft-green: #dcece8;
+      --soft-orange: #f1dfcf;
+      --tm-low: #f1dece;
+      --tm-high: #9a4f18;
+      --sc-low: #eff5ea;
+      --sc-high: #147c72;
+      --trab: #1a9b73;
+      --sinus: #d9782b;
+      --stent: #2075b8;
+      --yag: #bf3f6d;
     }
     * { box-sizing: border-box; }
     body {
@@ -353,6 +588,19 @@ def build_html() -> str:
       min-height: 0;
       padding: 18px;
       gap: 14px;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 440px minmax(0, 1fr);
+      gap: 14px;
+      min-height: 0;
+    }
+    .visual-stack {
+      display: grid;
+      grid-template-rows: minmax(0, auto) minmax(0, auto);
+      gap: 14px;
+      min-height: 0;
+      align-content: start;
     }
     h1 {
       margin: 0 0 6px;
@@ -438,6 +686,89 @@ def build_html() -> str:
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,251,247,0.96));
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(23, 44, 36, 0.04);
+    }
+    .card-head {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(216,223,215,0.8);
+      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(244,247,242,0.78));
+    }
+    .card-head h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .card-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .ring-frame {
+      padding: 12px 14px 14px;
+    }
+    .ring {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .setup-summary,
+    .solution-info,
+    .solution-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.76);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .setup-summary {
+      display: grid;
+      gap: 4px;
+    }
+    .solution-info {
+      display: grid;
+      gap: 6px;
+    }
+    .solution-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .solution-row span:first-child {
+      color: var(--muted);
+    }
+    .solution-note {
+      color: var(--muted);
+    }
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      margin-top: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .swatch {
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.08);
+      flex: 0 0 auto;
+    }
     .metrics {
       display: grid;
       grid-template-columns: repeat(4, minmax(120px, 1fr));
@@ -461,15 +792,13 @@ def build_html() -> str:
     }
     .plot-wrap {
       min-height: 0;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: white;
-      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     #plot {
       width: 100%;
-      height: calc(100vh - 170px);
-      min-height: 480px;
+      min-height: 720px;
+      height: calc(100vh - 200px);
     }
     .status {
       min-height: 20px;
@@ -478,11 +807,32 @@ def build_html() -> str:
       font-size: 13px;
       line-height: 1.35;
     }
+    .hidden {
+      display: none !important;
+    }
+    .ring-label {
+      font-size: 12px;
+      fill: var(--muted);
+    }
+    .ring-title {
+      font-size: 14px;
+      font-weight: 700;
+      fill: var(--ink);
+    }
+    .hoverable {
+      cursor: pointer;
+      transition: opacity 0.15s ease, stroke-width 0.15s ease;
+    }
+    .hoverable:hover {
+      opacity: 0.86;
+    }
     @media (max-width: 900px) {
       .app { grid-template-columns: 1fr; }
       aside { border-right: 0; border-bottom: 1px solid var(--line); }
       .metrics { grid-template-columns: 1fr 1fr; }
-      #plot { height: 520px; }
+      .dashboard { grid-template-columns: 1fr; }
+      #plot { min-height: 520px; height: 520px; }
+      .legend { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -505,13 +855,19 @@ def build_html() -> str:
           <option value="rectangle">rectangle</option>
         </select>
         <div class="grid2">
-          <div><label>IOP</label><input id="iop" type="number" step="0.1" value="7.0" /></div>
+          <div>
+            <label id="iop_label">Baseline IOP</label>
+            <input id="iop" type="number" step="0.1" value="15.09" />
+          </div>
           <div><label>Qt</label><input id="qt" type="number" step="0.1" value="2.0" /></div>
         </div>
+        <div id="iop_hint" class="hint">In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled.</div>
         <div class="grid2">
           <div><label>Pev</label><input id="pev" type="number" step="0.1" value="8.0" /></div>
           <div><label>Rtm</label><input id="rtm" type="number" step="0.1" placeholder="default" /></div>
         </div>
+        <div class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP (constant flow)</span></div>
+        <div class="hint">Auto RTM follows the online calculator idea: it uses a baseline eye with no surgeries and the default CC distribution to infer Rtm.</div>
       </div>
 
       <div class="section">
@@ -536,6 +892,16 @@ def build_html() -> str:
           <div><label>Stent beta</label><input id="beta" type="number" step="0.1" placeholder="1.0" /></div>
           <div class="checkline"><input id="unconventional" type="checkbox" /><span>Use unconventional flow</span></div>
         </div>
+      </div>
+
+      <div class="section">
+        <h2>Segment Profiles</h2>
+        <label>TM resistance profile</label>
+        <textarea id="rtm_profile" placeholder="Examples: 24 or 24,24,24,... (12 values) or 1:24, 2:30, ..., 12:24"></textarea>
+        <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar RTM and auto RTM.</div>
+        <label>SC baseline height profile</label>
+        <textarea id="h0_profile" placeholder="Examples: 20 or 20,20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
+        <div class="hint">Takes N segment values, where N is the current collector-channel count. If provided, this overrides scalar h0.</div>
       </div>
 
       <div class="section">
@@ -646,12 +1012,54 @@ def build_html() -> str:
         <div class="metric"><span>Resistance</span><b id="m_resistance">-</b></div>
         <div class="metric"><span>Facility</span><b id="m_facility">-</b></div>
       </div>
-      <div class="plot-wrap"><div id="plot"></div></div>
+      <div class="dashboard">
+        <div class="visual-stack">
+          <section class="card">
+            <div class="card-head">
+              <h3>Setup Ring</h3>
+              <p>Local circular preview of the current collector-channel layout, segment profiles, and interventions.</p>
+            </div>
+            <div class="ring-frame">
+              <svg id="setup_svg" class="ring" viewBox="0 0 420 420"></svg>
+              <div id="setup_summary" class="setup-summary"></div>
+              <div class="legend">
+                <div class="legend-item"><span class="swatch" style="background: var(--trab);"></span><span>Trabeculotomy</span></div>
+                <div class="legend-item"><span class="swatch" style="background: var(--sinus);"></span><span>Sinusotomy</span></div>
+                <div class="legend-item"><span class="swatch" style="background: var(--stent);"></span><span>Stent span</span></div>
+                <div class="legend-item"><span class="swatch" style="background: var(--yag);"></span><span>YAG hole</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h3>Solution Ring</h3>
+              <p>Pressure heatmap, canal-height ring, and collector-channel flow from the latest local solve.</p>
+            </div>
+            <div class="ring-frame">
+              <svg id="solution_svg" class="ring" viewBox="0 0 520 420"></svg>
+              <div id="solution_note" class="solution-note">Waiting for the first solve.</div>
+              <div id="solution_info" class="solution-info">Hover the pressure ring or a collector channel to inspect local values.</div>
+            </div>
+          </section>
+        </div>
+
+        <section class="card plot-wrap">
+          <div class="card-head">
+            <h3>Profiles</h3>
+            <p>Line plots for circumferential pressure, canal height, and collector-channel flow.</p>
+          </div>
+          <div id="plot"></div>
+        </section>
+      </div>
     </main>
   </div>
 
   <script>
     const $ = (id) => document.getElementById(id);
+    let lastResult = null;
+    let lastSolvedPayload = null;
+    let resultDirty = false;
 
     function payload() {
       return {
@@ -661,10 +1069,12 @@ def build_html() -> str:
         qt: $("qt").value,
         pev: $("pev").value,
         rtm: $("rtm").value,
+        auto_rtm: $("auto_rtm").checked,
         n: $("n").value,
         m: $("m").value,
         etm: $("etm").value,
         h0: $("h0").value,
+        h0_profile: $("h0_profile").value,
         hs: $("hs").value,
         rcc: $("rcc").value,
         qu: $("qu").value,
@@ -672,6 +1082,7 @@ def build_html() -> str:
         beta: $("beta").value,
         unconventional: $("unconventional").checked,
         ccs: $("ccs").value,
+        rtm_profile: $("rtm_profile").value,
         surgery: $("surgery").value,
         trab_hours: $("trab_hours").value,
         trabeculotomies: $("trabeculotomies").value,
@@ -699,9 +1110,359 @@ def build_html() -> str:
       };
     }
 
+    function numberValue(value, fallback = null) {
+      const num = Number(value);
+      return Number.isFinite(num) ? num : fallback;
+    }
+
     function fmt(value) {
       if (!Number.isFinite(value)) return "-";
       return Number(value).toPrecision(5);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function clamp(value, low, high) {
+      return Math.min(high, Math.max(low, value));
+    }
+
+    function hexToRgb(hex) {
+      const clean = String(hex).replace("#", "");
+      return {
+        r: Number.parseInt(clean.slice(0, 2), 16),
+        g: Number.parseInt(clean.slice(2, 4), 16),
+        b: Number.parseInt(clean.slice(4, 6), 16),
+      };
+    }
+
+    function mixColors(a, b, t) {
+      const left = hexToRgb(a);
+      const right = hexToRgb(b);
+      const ratio = clamp(t, 0, 1);
+      const c = (x, y) => Math.round(x + (y - x) * ratio);
+      return `rgb(${c(left.r, right.r)}, ${c(left.g, right.g)}, ${c(left.b, right.b)})`;
+    }
+
+    function polarPoint(cx, cy, radius, degrees) {
+      const radians = (degrees - 90) * Math.PI / 180;
+      return {
+        x: cx + radius * Math.cos(radians),
+        y: cy + radius * Math.sin(radians),
+      };
+    }
+
+    function arcPath(cx, cy, radius, startDeg, spanDeg) {
+      const span = clamp(spanDeg, 0.2, 359.8);
+      const start = polarPoint(cx, cy, radius, startDeg);
+      const end = polarPoint(cx, cy, radius, startDeg + span);
+      const largeArc = span > 180 ? 1 : 0;
+      return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
+    }
+
+    function drawTicks(cx, cy, radius) {
+      const parts = [];
+      for (let deg = 0; deg < 360; deg += 10) {
+        const isMajor = deg % 20 === 0;
+        const inner = polarPoint(cx, cy, radius - (isMajor ? 14 : 8), deg);
+        const outer = polarPoint(cx, cy, radius, deg);
+        parts.push(`<line x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="#7c877f" stroke-width="${isMajor ? 1.8 : 1}" opacity="0.85"></line>`);
+        if (isMajor) {
+          const text = polarPoint(cx, cy, radius - 24, deg);
+          parts.push(`<text x="${text.x.toFixed(2)}" y="${text.y.toFixed(2)}" text-anchor="middle" dominant-baseline="central" class="ring-label">${deg}°</text>`);
+        }
+      }
+      return parts.join("");
+    }
+
+    function parseRangesText(text) {
+      if (!text || !String(text).trim()) return [];
+      const values = [];
+      for (const chunk of String(text).replaceAll(";", ",").split(",")) {
+        const part = chunk.trim();
+        if (!part) continue;
+        let start = 0;
+        let end = 0;
+        if (part.includes("-")) {
+          const [left, right] = part.split("-", 2);
+          start = Math.round(Number(left.trim()));
+          end = Math.round(Number(right.trim()));
+        } else if (part.includes(":")) {
+          const [left, right] = part.split(":", 2);
+          start = Math.round(Number(left.trim()));
+          end = Math.round(Number(right.trim()));
+        } else {
+          start = end = Math.round(Number(part));
+        }
+        if (Number.isFinite(start) && Number.isFinite(end)) {
+          if (end < start) [start, end] = [end, start];
+          values.push({ start, end });
+        }
+      }
+      return values;
+    }
+
+    function parseNodeListText(text) {
+      if (!text || !String(text).trim()) return [];
+      return String(text)
+        .replaceAll(";", ",")
+        .split(",")
+        .map((part) => Math.round(Number(part.trim())))
+        .filter((value) => Number.isFinite(value));
+    }
+
+    function parseCCsText(text) {
+      if (!text || !String(text).trim()) return [];
+      const ccs = [];
+      for (const chunk of String(text).replaceAll(";", ",").split(",")) {
+        const part = chunk.trim();
+        if (!part) continue;
+        let locText = part;
+        let ratioText = "1";
+        if (part.includes(":")) {
+          [locText, ratioText] = part.split(":", 2);
+        } else if (part.includes("=")) {
+          [locText, ratioText] = part.split("=", 2);
+        }
+        const loc = Math.round(Number(locText.trim()));
+        const ratio = Number(ratioText.trim());
+        if (Number.isFinite(loc) && Number.isFinite(ratio)) {
+          ccs.push({ loc, ratio });
+        }
+      }
+      return ccs;
+    }
+
+    function parseProfileValues(text, expectedCount) {
+      if (!text || !String(text).trim() || !expectedCount) return null;
+      const chunks = String(text)
+        .replaceAll(";", ",")
+        .replaceAll("\\n", ",")
+        .split(",")
+        .map((part) => part.trim())
+        .filter(Boolean);
+      if (!chunks.length) return null;
+
+      const keyed = chunks.some((part) => part.includes(":") || part.includes("="));
+      if (keyed) {
+        const values = Array(expectedCount).fill(null);
+        for (const chunk of chunks) {
+          const divider = chunk.includes(":") ? ":" : "=";
+          const [indexText, valueText] = chunk.split(divider, 2);
+          const index = Math.round(Number(indexText.trim())) - 1;
+          const value = Number(valueText.trim());
+          if (index >= 0 && index < expectedCount && Number.isFinite(value)) {
+            values[index] = value;
+          }
+        }
+        return values.every((value) => Number.isFinite(value)) ? values : null;
+      }
+
+      const raw = chunks.map((chunk) => Number(chunk)).filter((value) => Number.isFinite(value));
+      if (!raw.length) return null;
+      if (raw.length === 1) return Array(expectedCount).fill(raw[0]);
+      if (raw.length === expectedCount) return raw;
+      return null;
+    }
+
+    function defaultTrabeculotomies(hours) {
+      if (hours === 1) return [{ start: 550, end: 650 }];
+      if (hours === 4) return [{ start: 100, end: 200 }, { start: 400, end: 500 }, { start: 700, end: 800 }, { start: 1000, end: 1100 }];
+      if (hours === 12) return [{ start: 0, end: 1199 }];
+      return [];
+    }
+
+    function defaultYagHoles(count) {
+      const defaults = {
+        0: [],
+        1: [600],
+        2: [300, 900],
+        3: [200, 600, 1000],
+        4: [150, 450, 750, 1050],
+        5: [120, 360, 600, 840, 1080],
+        6: [100, 300, 500, 700, 900, 1100],
+      };
+      return defaults[count] || [];
+    }
+
+    function normalizeNode(node, totalNodes) {
+      if (!totalNodes) return 0;
+      const rounded = Math.round(Number(node) || 0);
+      return ((rounded % totalNodes) + totalNodes) % totalNodes;
+    }
+
+    function inferCollectorNodes(currentPayload, result, totalNodes) {
+      if (result?.meta?.ccs?.length) return result.meta.ccs.map((cc) => ({ loc: cc.loc, ratio: cc.ratio }));
+      const explicit = parseCCsText(currentPayload.ccs);
+      if (explicit.length) return explicit;
+      const mValue = Math.max(1, Math.round(numberValue(currentPayload.m, 40) || 40));
+      const count = Math.max(1, Math.round(numberValue(currentPayload.n, Math.max(1, Math.floor(totalNodes / mValue))) || 30));
+      return Array.from({ length: count }, (_, idx) => ({ loc: idx * mValue, ratio: 1 }));
+    }
+
+    function estimatePendingStentSpan(currentPayload) {
+      const lengthUm = Math.max(30, numberValue(currentPayload.stent_length, 1000) || 1000);
+      const beforeNodes = Math.max(0, Math.round(numberValue(currentPayload.stent_l_before, 0) || 0));
+      const afterNodes = Math.max(0, Math.round(numberValue(currentPayload.stent_l_after, 0) || 0));
+      return Math.max(1, Math.round(lengthUm / 30)) + beforeNodes + afterNodes + 1;
+    }
+
+    function collectSetupModel(currentPayload, result) {
+      const totalNodes = Math.max(1, Math.round(result?.meta?.total_nodes || result?.series?.pressure?.y?.length || ((numberValue(currentPayload.n, 30) || 30) * (numberValue(currentPayload.m, 40) || 40))));
+      const ccs = inferCollectorNodes(currentPayload, result, totalNodes);
+      const nSegments = Math.max(1, Math.round(numberValue(currentPayload.n, ccs.length || 30) || 30));
+
+      let trabeculotomies = [];
+      if (result?.meta?.trabeculotomies?.length) {
+        trabeculotomies = result.meta.trabeculotomies;
+      } else {
+        trabeculotomies = parseRangesText(currentPayload.trabeculotomies);
+        if (!trabeculotomies.length && currentPayload.surgery === "Trabeculotomy") {
+          trabeculotomies = defaultTrabeculotomies(Math.round(numberValue(currentPayload.trab_hours, 1) || 1));
+        }
+      }
+
+      let yagHoles = [];
+      if (result?.meta?.yag_holes?.length) {
+        yagHoles = result.meta.yag_holes;
+      } else {
+        yagHoles = parseNodeListText(currentPayload.yag_holes_list);
+        if (!yagHoles.length && currentPayload.surgery === "YAG holes") {
+          yagHoles = defaultYagHoles(Math.round(numberValue(currentPayload.yag_holes, 2) || 2));
+        }
+      }
+
+      let stents = [];
+      if (result?.meta?.stents?.length) {
+        stents = result.meta.stents;
+      } else {
+        let nodesText = currentPayload.stent_nodes;
+        if (!nodesText && currentPayload.surgery === "iStent") nodesText = currentPayload.stent_node || "0";
+        const nodes = parseNodeListText(nodesText);
+        const span = estimatePendingStentSpan(currentPayload);
+        stents = nodes.map((loc) => ({
+          loc,
+          name: currentPayload.stent_name || "Custom iStent",
+          span_nodes: span,
+          inlet_index: Math.max(0, Math.round(numberValue(currentPayload.stent_l_before, 0) || 0)),
+          two_way: !!currentPayload.stent_two_way,
+        }));
+      }
+
+      return {
+        totalNodes,
+        ccs,
+        trabeculotomies,
+        sinusotomies: result?.meta?.sinusotomies || parseRangesText(currentPayload.sinusotomies),
+        yagHoles,
+        stents,
+        tmProfile: parseProfileValues(currentPayload.rtm_profile, 12),
+        scProfile: parseProfileValues(currentPayload.h0_profile, nSegments),
+        surgery: currentPayload.surgery,
+      };
+    }
+
+    function rangeSpanNodes(range) {
+      return Math.max(1, (range.end - range.start + 1));
+    }
+
+    function buildSetupSummary(model) {
+      const lines = [];
+      lines.push(`<div><b>${model.ccs.length}</b> collector channels across <b>${model.totalNodes}</b> SC nodes.</div>`);
+      lines.push(`<div>Interventions: trab <b>${model.trabeculotomies.length}</b>, sinus <b>${model.sinusotomies.length}</b>, YAG <b>${model.yagHoles.length}</b>, stents <b>${model.stents.length}</b>.</div>`);
+      lines.push(`<div>Profiles: TM ${model.tmProfile ? "<b>variable</b>" : "scalar"} | SC height ${model.scProfile ? "<b>variable</b>" : "scalar"}.</div>`);
+      $("setup_summary").innerHTML = lines.join("");
+    }
+
+    function renderSetupRing(currentPayload, result) {
+      const svg = $("setup_svg");
+      const model = collectSetupModel(currentPayload, result);
+      buildSetupSummary(model);
+
+      const cx = 210;
+      const cy = 210;
+      const ccRadius = 166;
+      const scRadius = 132;
+      const tmRadius = 98;
+      const parts = [];
+
+      parts.push(`<rect x="0" y="0" width="420" height="420" rx="22" fill="rgba(245,248,244,0.96)"></rect>`);
+      parts.push(drawTicks(cx, cy, 184));
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius}" fill="none" stroke="rgba(20,124,114,0.08)" stroke-width="16"></circle>`);
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${scRadius}" fill="none" stroke="rgba(20,124,114,0.12)" stroke-width="22"></circle>`);
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${tmRadius}" fill="none" stroke="rgba(154,79,24,0.10)" stroke-width="18"></circle>`);
+
+      if (model.scProfile) {
+        const minValue = Math.min(...model.scProfile);
+        const maxValue = Math.max(...model.scProfile);
+        model.scProfile.forEach((value, idx) => {
+          const start = 360 * idx / model.scProfile.length;
+          const span = 360 / model.scProfile.length - 0.9;
+          const color = mixColors("#eff5ea", "#147c72", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
+          parts.push(`<path d="${arcPath(cx, cy, scRadius, start, span)}" stroke="${color}" stroke-width="22" fill="none" opacity="0.95"></path>`);
+        });
+      }
+
+      if (model.tmProfile) {
+        const minValue = Math.min(...model.tmProfile);
+        const maxValue = Math.max(...model.tmProfile);
+        model.tmProfile.forEach((value, idx) => {
+          const start = 360 * idx / model.tmProfile.length;
+          const span = 360 / model.tmProfile.length - 1.2;
+          const color = mixColors("#f1dece", "#9a4f18", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
+          parts.push(`<path d="${arcPath(cx, cy, tmRadius, start, span)}" stroke="${color}" stroke-width="18" fill="none" opacity="0.96"></path>`);
+        });
+      }
+
+      model.trabeculotomies.forEach((range) => {
+        const start = 360 * normalizeNode(range.start, model.totalNodes) / model.totalNodes;
+        const span = 360 * rangeSpanNodes(range) / model.totalNodes;
+        if (span >= 359.5) {
+          parts.push(`<circle cx="${cx}" cy="${cy}" r="${scRadius}" fill="none" stroke="#1a9b73" stroke-width="12"></circle>`);
+        } else {
+          parts.push(`<path d="${arcPath(cx, cy, scRadius, start, span)}" stroke="#1a9b73" stroke-width="12" stroke-linecap="round" fill="none"></path>`);
+        }
+      });
+
+      model.sinusotomies.forEach((range) => {
+        const start = 360 * normalizeNode(range.start, model.totalNodes) / model.totalNodes;
+        const span = 360 * rangeSpanNodes(range) / model.totalNodes;
+        if (span >= 359.5) {
+          parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius - 8}" fill="none" stroke="#d9782b" stroke-width="8" stroke-dasharray="3 5"></circle>`);
+        } else {
+          parts.push(`<path d="${arcPath(cx, cy, ccRadius - 8, start, span)}" stroke="#d9782b" stroke-width="8" stroke-linecap="round" stroke-dasharray="3 5" fill="none"></path>`);
+        }
+      });
+
+      model.stents.forEach((stent) => {
+        const start = 360 * normalizeNode(stent.loc, model.totalNodes) / model.totalNodes;
+        const span = 360 * Math.max(1, stent.span_nodes || 1) / model.totalNodes;
+        parts.push(`<path d="${arcPath(cx, cy, scRadius - 2, start, span)}" stroke="#2075b8" stroke-width="10" stroke-linecap="round" fill="none"></path>`);
+        const inletNode = normalizeNode(stent.loc + (stent.inlet_index || 0), model.totalNodes);
+        const inlet = polarPoint(cx, cy, scRadius - 2, 360 * inletNode / model.totalNodes);
+        parts.push(`<circle cx="${inlet.x.toFixed(2)}" cy="${inlet.y.toFixed(2)}" r="4.5" fill="white" stroke="#2075b8" stroke-width="2"></circle>`);
+      });
+
+      model.yagHoles.forEach((node) => {
+        const point = polarPoint(cx, cy, tmRadius + 18, 360 * normalizeNode(node, model.totalNodes) / model.totalNodes);
+        parts.push(`<circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="5.5" fill="white" stroke="#bf3f6d" stroke-width="3"></circle>`);
+      });
+
+      model.ccs.forEach((cc) => {
+        const angle = 360 * normalizeNode(cc.loc, model.totalNodes) / model.totalNodes;
+        const inner = polarPoint(cx, cy, ccRadius - 3, angle);
+        const outer = polarPoint(cx, cy, ccRadius + 22, angle);
+        const width = clamp(1.2 + (Number(cc.ratio) || 1) * 0.8, 1.4, 6.5);
+        parts.push(`<line x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="#1f6fb4" stroke-width="${width.toFixed(2)}" opacity="0.86"></line>`);
+      });
+
+      parts.push(`<text x="${cx}" y="${cy - 10}" text-anchor="middle" class="ring-title">Anterior Chamber</text>`);
+      parts.push(`<text x="${cx}" y="${cy + 14}" text-anchor="middle" class="ring-label">Schlemm's canal / TM / CC map</text>`);
+      svg.innerHTML = parts.join("");
     }
 
     function updateMetrics(metrics) {
@@ -709,6 +1470,150 @@ def build_html() -> str:
       $("m_flowrate").textContent = fmt(metrics.flowrate);
       $("m_resistance").textContent = fmt(metrics.resistance);
       $("m_facility").textContent = fmt(metrics.facility);
+    }
+
+    function updateModeUI() {
+      const isConstantPressure = $("mode").value === "constant pressure";
+      const hasVariableRtmProfile = $("rtm_profile").value.trim().length > 0;
+      const autoRtmEnabled = $("auto_rtm").checked && !isConstantPressure && !hasVariableRtmProfile;
+      $("iop_label").textContent = isConstantPressure ? "IOP" : "Baseline IOP";
+      $("iop").value = $("iop").value || (isConstantPressure ? "7.0" : "15.09");
+      $("iop_hint").textContent = isConstantPressure
+        ? "In constant pressure mode, IOP is the target pressure for the solve."
+        : hasVariableRtmProfile
+          ? "Baseline IOP is not used while a TM resistance profile is present. Clear the profile to re-enable auto RTM."
+          : "In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled. The estimate assumes a baseline eye with no surgeries and default collector channels.";
+      $("auto_rtm").disabled = isConstantPressure || hasVariableRtmProfile;
+      $("rtm").disabled = autoRtmEnabled || hasVariableRtmProfile;
+      $("rtm").placeholder = hasVariableRtmProfile ? "overridden by TM profile" : (autoRtmEnabled ? "derived automatically" : "default");
+    }
+
+    function statusFromMeta(meta) {
+      if (!meta) return "";
+      let parts = [];
+      if (meta.rtm_source === "baseline_iop") {
+        parts.push(`Auto RTM enabled: baseline IOP ${fmt(meta.baseline_iop)} -> Rtm ${fmt(meta.rtm_used)}.`);
+      }
+      if (meta.rtm_source === "manual") {
+        parts.push(`Manual Rtm used: ${fmt(meta.rtm_used)}.`);
+      }
+      if (meta.rtm_source === "tm_profile") {
+        parts.push(`Variable TM profile used: ${meta.tm_profile_segments || 12} segments.`);
+      }
+      if (meta.h0_source === "sc_profile") {
+        parts.push(`Variable SC profile used: ${meta.sc_profile_segments || $("n").value || 30} segments.`);
+      }
+      return parts.join(" ");
+    }
+
+    function renderSolutionInfo(result, details = null) {
+      const rows = [
+        `<div class="solution-row"><span>IOP</span><b>${fmt(result.metrics.iop)} mmHg</b></div>`,
+        `<div class="solution-row"><span>Flow rate</span><b>${fmt(result.metrics.flowrate)} uL/min</b></div>`,
+        `<div class="solution-row"><span>Resistance</span><b>${fmt(result.metrics.resistance)}</b></div>`,
+      ];
+      if (details?.kind === "node") {
+        rows.push(`<div class="solution-row"><span>θ</span><b>${fmt(details.theta)}°</b></div>`);
+        rows.push(`<div class="solution-row"><span>Psc</span><b>${fmt(details.pressure)} mmHg</b></div>`);
+        rows.push(`<div class="solution-row"><span>Canal height</span><b>${fmt(details.height)} um</b></div>`);
+      } else if (details?.kind === "cc") {
+        rows.push(`<div class="solution-row"><span>CC node</span><b>${details.loc}</b></div>`);
+        rows.push(`<div class="solution-row"><span>Jcc</span><b>${fmt(details.flow)} uL/min</b></div>`);
+      } else {
+        rows.push(`<div>Hover the pressure ring to inspect local pressure and canal height, or hover a collector channel to inspect its flow.</div>`);
+      }
+      $("solution_info").innerHTML = rows.join("");
+    }
+
+    function renderSolutionRing(result, solvedPayload) {
+      const svg = $("solution_svg");
+      const note = $("solution_note");
+      if (!result) {
+        svg.innerHTML = `<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(245,248,244,0.96)"></rect><text x="260" y="208" text-anchor="middle" class="ring-title">No solution yet</text><text x="260" y="232" text-anchor="middle" class="ring-label">Run Solve locally to render the pressure and flow map.</text>`;
+        $("solution_info").textContent = "Hover the pressure ring or a collector channel to inspect local values.";
+        note.textContent = "Waiting for the first solve.";
+        return;
+      }
+
+      const pressure = result.series.pressure.y;
+      const heights = result.series.height.y;
+      const jcc = result.series.jcc.y;
+      const totalNodes = Math.max(1, Math.round(result.meta?.total_nodes || pressure.length));
+      const ccs = inferCollectorNodes(solvedPayload, result, totalNodes);
+      const pev = numberValue(solvedPayload?.pev, 8.0) || 8.0;
+      const iop = numberValue(result.metrics.iop, 0) || 0;
+      const pLow = Math.min(pev, ...pressure);
+      const pHigh = Math.max(iop, ...pressure);
+      const hLow = Math.min(...heights);
+      const hHigh = Math.max(...heights);
+      const maxFlow = Math.max(...jcc, 1e-9);
+      const parts = [];
+      const cx = 300;
+      const cy = 210;
+      const pressureRadius = 126;
+      const heightRadius = 92;
+      const ccRadius = 142;
+
+      parts.push(`<defs><linearGradient id="pressureScale" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#e04b3f"></stop><stop offset="100%" stop-color="#1f6fb4"></stop></linearGradient></defs>`);
+      parts.push(`<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(245,248,244,0.96)"></rect>`);
+      parts.push(`<rect x="18" y="44" width="18" height="248" rx="4" fill="url(#pressureScale)"></rect>`);
+      parts.push(`<text x="48" y="54" class="ring-label">${fmt(pHigh)} mmHg</text>`);
+      parts.push(`<text x="48" y="292" class="ring-label">${fmt(pLow)} mmHg</text>`);
+      parts.push(`<text x="18" y="26" class="ring-label">Pressure</text>`);
+      parts.push(drawTicks(cx, cy, 182));
+
+      pressure.forEach((value, idx) => {
+        const start = 360 * idx / totalNodes;
+        const span = 360 / totalNodes + 0.12;
+        const color = mixColors("#1f6fb4", "#e04b3f", pHigh === pLow ? 0.5 : (value - pLow) / (pHigh - pLow));
+        parts.push(`<path class="hoverable" data-kind="node" data-theta="${(360 * idx / totalNodes).toFixed(2)}" data-pressure="${value}" data-height="${heights[idx]}" d="${arcPath(cx, cy, pressureRadius, start, span)}" stroke="${color}" stroke-width="20" fill="none"></path>`);
+      });
+
+      heights.forEach((value, idx) => {
+        const start = 360 * idx / totalNodes;
+        const span = 360 / totalNodes + 0.12;
+        const color = mixColors("#f0e5b9", "#147c72", hHigh === hLow ? 0.5 : (value - hLow) / (hHigh - hLow));
+        parts.push(`<path d="${arcPath(cx, cy, heightRadius, start, span)}" stroke="${color}" stroke-width="16" fill="none" opacity="0.96"></path>`);
+      });
+
+      ccs.slice(0, jcc.length).forEach((cc, idx) => {
+        const angle = 360 * normalizeNode(cc.loc, totalNodes) / totalNodes;
+        const inner = polarPoint(cx, cy, ccRadius, angle);
+        const outer = polarPoint(cx, cy, ccRadius + 10 + 22 * (jcc[idx] / maxFlow), angle);
+        const color = mixColors("#a7d1f2", "#1f6fb4", jcc[idx] / maxFlow);
+        parts.push(`<line class="hoverable" data-kind="cc" data-loc="${cc.loc}" data-flow="${jcc[idx]}" x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="${color}" stroke-width="4" stroke-linecap="round"></line>`);
+      });
+
+      parts.push(`<text x="${cx}" y="${cy - 8}" text-anchor="middle" class="ring-title">Solution Map</text>`);
+      parts.push(`<text x="${cx}" y="${cy + 15}" text-anchor="middle" class="ring-label">Outer ring: pressure | Inner ring: canal height</text>`);
+      svg.innerHTML = parts.join("");
+
+      svg.querySelectorAll("[data-kind='node']").forEach((node) => {
+        node.addEventListener("mouseenter", () => {
+          renderSolutionInfo(result, {
+            kind: "node",
+            theta: Number(node.dataset.theta),
+            pressure: Number(node.dataset.pressure),
+            height: Number(node.dataset.height),
+          });
+        });
+      });
+
+      svg.querySelectorAll("[data-kind='cc']").forEach((line) => {
+        line.addEventListener("mouseenter", () => {
+          renderSolutionInfo(result, {
+            kind: "cc",
+            loc: line.dataset.loc,
+            flow: Number(line.dataset.flow),
+          });
+        });
+      });
+
+      svg.onmouseleave = () => renderSolutionInfo(result);
+      renderSolutionInfo(result);
+      note.textContent = resultDirty
+        ? "Showing the latest solved field. Inputs changed afterward, so the setup preview is newer than this solution map."
+        : "Showing the latest local solve.";
     }
 
     function plotSeries(result) {
@@ -740,20 +1645,35 @@ def build_html() -> str:
       Plotly.react("plot", [trace], layout, { responsive: true, displaylogo: false, scrollZoom: true });
     }
 
+    function refreshVisuals() {
+      renderSetupRing(payload(), lastResult);
+      renderSolutionRing(lastResult, lastSolvedPayload || payload());
+    }
+
+    function markResultDirty() {
+      resultDirty = !!lastResult;
+      refreshVisuals();
+    }
+
     async function solve() {
+      const currentPayload = payload();
       $("status").textContent = "Solving locally...";
       $("solveBtn").disabled = true;
       try {
         const response = await fetch("/api/solve", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload()),
+          body: JSON.stringify(currentPayload),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Solve failed");
+        lastResult = data;
+        lastSolvedPayload = currentPayload;
+        resultDirty = false;
         updateMetrics(data.metrics);
         plotSeries(data);
-        $("status").textContent = "";
+        refreshVisuals();
+        $("status").textContent = statusFromMeta(data.meta);
       } catch (err) {
         $("status").textContent = err.message || String(err);
       } finally {
@@ -762,7 +1682,32 @@ def build_html() -> str:
     }
 
     $("solveBtn").addEventListener("click", solve);
-    $("plot_type").addEventListener("change", solve);
+    $("plot_type").addEventListener("change", () => {
+      if (lastResult) {
+        plotSeries(lastResult);
+      } else {
+        solve();
+      }
+    });
+    $("mode").addEventListener("change", () => {
+      updateModeUI();
+      markResultDirty();
+    });
+    $("auto_rtm").addEventListener("change", () => {
+      updateModeUI();
+      markResultDirty();
+    });
+    $("rtm_profile").addEventListener("input", () => {
+      updateModeUI();
+      markResultDirty();
+    });
+    document.querySelectorAll("input, select, textarea").forEach((element) => {
+      if (["mode", "auto_rtm", "rtm_profile", "plot_type"].includes(element.id)) return;
+      element.addEventListener("input", markResultDirty);
+      element.addEventListener("change", markResultDirty);
+    });
+    updateModeUI();
+    refreshVisuals();
     window.addEventListener("load", solve);
   </script>
 </body>
