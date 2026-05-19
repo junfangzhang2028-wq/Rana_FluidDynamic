@@ -891,6 +891,28 @@ def build_html() -> str:
       font-weight: 700;
       fill: var(--ink);
     }
+    .anatomy-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      fill: #47524c;
+      text-transform: uppercase;
+    }
+    .anatomy-label-side {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      fill: #47524c;
+      text-transform: uppercase;
+    }
+    .anatomy-divider {
+      stroke: rgba(71, 82, 76, 0.34);
+      stroke-width: 1.4;
+      stroke-dasharray: 4 4;
+    }
+    .anatomy-sector {
+      opacity: 0.48;
+    }
     .hoverable {
       cursor: pointer;
       transition: opacity 0.15s ease, stroke-width 0.15s ease;
@@ -929,11 +951,22 @@ def build_html() -> str:
               <option value="constant flow">constant flow</option>
               <option value="constant pressure">constant pressure</option>
             </select>
-            <label>Geometry</label>
-            <select id="geometry">
-              <option value="ellipse">ellipse</option>
-              <option value="rectangle">rectangle</option>
-            </select>
+            <div class="grid2">
+              <div>
+                <label>Geometry</label>
+                <select id="geometry">
+                  <option value="ellipse">ellipse</option>
+                  <option value="rectangle">rectangle</option>
+                </select>
+              </div>
+              <div>
+                <label>Eye</label>
+                <select id="eye_side">
+                  <option value="right">Right Eye (OD)</option>
+                  <option value="left">Left Eye (OS)</option>
+                </select>
+              </div>
+            </div>
             <div class="grid2">
               <div>
                 <label id="iop_label">Baseline IOP</label>
@@ -1261,6 +1294,15 @@ def build_html() -> str:
       return Number(value).toPrecision(5);
     }
 
+    function eyeLabels() {
+      const rightEye = $("eye_side").value !== "left";
+      return {
+        eye: rightEye ? "Right Eye (OD)" : "Left Eye (OS)",
+        left: rightEye ? "Temporal" : "Nasal",
+        right: rightEye ? "Nasal" : "Temporal",
+      };
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replaceAll("&", "&amp;")
@@ -1305,6 +1347,31 @@ def build_html() -> str:
       return `M ${start.x.toFixed(2)} ${start.y.toFixed(2)} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x.toFixed(2)} ${end.y.toFixed(2)}`;
     }
 
+    function annularSectorPath(cx, cy, innerRadius, outerRadius, startDeg, spanDeg) {
+      const span = clamp(spanDeg, 0.2, 359.8);
+      const outerStart = polarPoint(cx, cy, outerRadius, startDeg);
+      const outerEnd = polarPoint(cx, cy, outerRadius, startDeg + span);
+      const innerEnd = polarPoint(cx, cy, innerRadius, startDeg + span);
+      const innerStart = polarPoint(cx, cy, innerRadius, startDeg);
+      const largeArc = span > 180 ? 1 : 0;
+      return [
+        `M ${outerStart.x.toFixed(2)} ${outerStart.y.toFixed(2)}`,
+        `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${outerEnd.x.toFixed(2)} ${outerEnd.y.toFixed(2)}`,
+        `L ${innerEnd.x.toFixed(2)} ${innerEnd.y.toFixed(2)}`,
+        `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${innerStart.x.toFixed(2)} ${innerStart.y.toFixed(2)}`,
+        "Z",
+      ].join(" ");
+    }
+
+    function anatomyColors() {
+      return {
+        Superior: "rgba(102, 167, 214, 0.22)",
+        Inferior: "rgba(165, 132, 201, 0.20)",
+        Temporal: "rgba(221, 166, 94, 0.20)",
+        Nasal: "rgba(106, 176, 117, 0.20)",
+      };
+    }
+
     function drawTicks(cx, cy, radius) {
       const parts = [];
       for (let deg = 0; deg < 360; deg += 10) {
@@ -1318,6 +1385,88 @@ def build_html() -> str:
         }
       }
       return parts.join("");
+    }
+
+    function drawAnatomyOverlay(cx, cy, innerRadius, outerRadius, frameWidth) {
+      const labels = eyeLabels();
+      const boundaries = [45, 135, 225, 315];
+      const parts = [];
+      const colors = anatomyColors();
+
+      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 315, 90)}" fill="${colors.Superior}"></path>`);
+      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 45, 90)}" fill="${colors[labels.right]}"></path>`);
+      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 135, 90)}" fill="${colors.Inferior}"></path>`);
+      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 225, 90)}" fill="${colors[labels.left]}"></path>`);
+
+      boundaries.forEach((degrees) => {
+        const inner = polarPoint(cx, cy, innerRadius, degrees);
+        const outer = polarPoint(cx, cy, outerRadius, degrees);
+        parts.push(`<line class="anatomy-divider" x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}"></line>`);
+      });
+
+      const leftX = Math.max(20, cx - outerRadius - 44);
+      const rightX = Math.min(frameWidth - 20, cx + outerRadius + 44);
+
+      parts.push(`<text x="${cx.toFixed(2)}" y="${(cy - outerRadius - 34).toFixed(2)}" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Superior</text>`);
+      parts.push(`<text x="${cx.toFixed(2)}" y="${(cy + outerRadius + 34).toFixed(2)}" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Inferior</text>`);
+      parts.push(`<text x="${leftX.toFixed(2)}" y="${cy.toFixed(2)}" text-anchor="start" dominant-baseline="central" class="anatomy-label-side">${labels.left}</text>`);
+      parts.push(`<text x="${rightX.toFixed(2)}" y="${cy.toFixed(2)}" text-anchor="end" dominant-baseline="central" class="anatomy-label-side">${labels.right}</text>`);
+      return parts.join("");
+    }
+
+    function anatomyAxisGuide(series) {
+      if (!series || !Array.isArray(series.x) || !series.x.length) return null;
+      const minX = Math.min(...series.x);
+      const maxX = Math.max(...series.x);
+      if (!Number.isFinite(minX) || !Number.isFinite(maxX) || maxX <= minX) return null;
+
+      const labels = eyeLabels();
+      const span = maxX - minX;
+      const quarters = [0, 0.25, 0.5, 0.75, 1].map((ratio) => minX + span * ratio);
+      const tickText = [
+        `${fmt(minX)}<br><b>Superior</b>`,
+        `${fmt(minX + span * 0.25)}<br><b>${labels.right}</b>`,
+        `${fmt(minX + span * 0.5)}<br><b>Inferior</b>`,
+        `${fmt(minX + span * 0.75)}<br><b>${labels.left}</b>`,
+        `${fmt(maxX)}<br><b>Superior</b>`,
+      ];
+      const colors = anatomyColors();
+      const boundaries = [0.125, 0.375, 0.625, 0.875].map((ratio) => minX + span * ratio);
+      const regions = [
+        { x0: minX, x1: minX + span * 0.125, name: "Superior" },
+        { x0: minX + span * 0.125, x1: minX + span * 0.375, name: labels.right },
+        { x0: minX + span * 0.375, x1: minX + span * 0.625, name: "Inferior" },
+        { x0: minX + span * 0.625, x1: minX + span * 0.875, name: labels.left },
+        { x0: minX + span * 0.875, x1: maxX, name: "Superior" },
+      ];
+      return {
+        tickvals: quarters,
+        ticktext: tickText,
+        shapes: [
+          ...regions.map((region) => ({
+            type: "rect",
+            xref: "x",
+            yref: "paper",
+            x0: region.x0,
+            x1: region.x1,
+            y0: 0,
+            y1: 1,
+            fillcolor: colors[region.name],
+            line: { width: 0 },
+            layer: "below",
+          })),
+          ...boundaries.map((x) => ({
+            type: "line",
+            xref: "x",
+            yref: "paper",
+            x0: x,
+            x1: x,
+            y0: 0,
+            y1: 1,
+            line: { color: "rgba(71, 82, 76, 0.15)", width: 1, dash: "dot" },
+          })),
+        ],
+      };
     }
 
     function parseRangesText(text) {
@@ -1512,10 +1661,12 @@ def build_html() -> str:
     }
 
     function buildSetupSummary(model) {
+      const labels = eyeLabels();
       const lines = [];
       lines.push(`<div><b>${model.ccs.length}</b> collector channels across <b>${model.totalNodes}</b> SC nodes.</div>`);
       lines.push(`<div>Interventions: trab <b>${model.trabeculotomies.length}</b>, sinus <b>${model.sinusotomies.length}</b>, YAG <b>${model.yagHoles.length}</b>, stents <b>${model.stents.length}</b>.</div>`);
       lines.push(`<div>Profiles: TM ${model.tmProfile ? "<b>variable</b>" : "scalar"} | SC height ${model.scProfile ? "<b>variable</b>" : "scalar"}.</div>`);
+      lines.push(`<div>Eye orientation: <b>${labels.eye}</b> with <b>${labels.left}</b> on the left and <b>${labels.right}</b> on the right.</div>`);
       $("setup_summary").innerHTML = lines.join("");
     }
 
@@ -1536,6 +1687,7 @@ def build_html() -> str:
       parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius}" fill="none" stroke="rgba(20,124,114,0.08)" stroke-width="16"></circle>`);
       parts.push(`<circle cx="${cx}" cy="${cy}" r="${scRadius}" fill="none" stroke="rgba(20,124,114,0.12)" stroke-width="22"></circle>`);
       parts.push(`<circle cx="${cx}" cy="${cy}" r="${tmRadius}" fill="none" stroke="rgba(154,79,24,0.10)" stroke-width="18"></circle>`);
+      parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 8, ccRadius + 4, 420));
 
       if (model.scProfile) {
         const minValue = Math.min(...model.scProfile);
@@ -1680,10 +1832,12 @@ def build_html() -> str:
     }
 
     function renderSolutionInfo(result, details = null) {
+      const labels = eyeLabels();
       const rows = [
         `<div class="solution-row"><span>IOP</span><b>${fmt(result.metrics.iop)} mmHg</b></div>`,
         `<div class="solution-row"><span>Flow rate</span><b>${fmt(result.metrics.flowrate)} uL/min</b></div>`,
         `<div class="solution-row"><span>Resistance</span><b>${fmt(result.metrics.resistance)}</b></div>`,
+        `<div class="solution-row"><span>Eye</span><b>${labels.eye}</b></div>`,
       ];
       if (details?.kind === "node") {
         rows.push(`<div class="solution-row"><span>θ</span><b>${fmt(details.theta)}°</b></div>`);
@@ -1734,6 +1888,7 @@ def build_html() -> str:
       parts.push(`<text x="48" y="292" class="ring-label">${fmt(pLow)} mmHg</text>`);
       parts.push(`<text x="18" y="26" class="ring-label">Pressure</text>`);
       parts.push(drawTicks(cx, cy, 182));
+      parts.push(drawAnatomyOverlay(cx, cy, heightRadius - 10, ccRadius + 18, 520));
 
       pressure.forEach((value, idx) => {
         const start = 360 * idx / totalNodes;
@@ -1811,10 +1966,20 @@ def build_html() -> str:
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
         font: { color: "#1e2521" },
-        margin: { l: 70, r: 24, t: 56, b: 58 },
+        margin: { l: 70, r: 24, t: 56, b: kind === "jcc" ? 58 : 92 },
         xaxis: { title: xTitle, gridcolor: "#e6ebe5" },
         yaxis: { title: yTitle, gridcolor: "#e6ebe5", rangemode: "tozero" },
       };
+      if (kind !== "jcc") {
+        const axisGuide = anatomyAxisGuide(series);
+        if (axisGuide) {
+          layout.xaxis.tickmode = "array";
+          layout.xaxis.tickvals = axisGuide.tickvals;
+          layout.xaxis.ticktext = axisGuide.ticktext;
+          layout.xaxis.tickfont = { size: 11, color: "#47524c" };
+          layout.shapes = axisGuide.shapes;
+        }
+      }
       Plotly.react("plot", [trace], layout, { responsive: true, displaylogo: false, scrollZoom: true });
     }
 
@@ -1866,6 +2031,12 @@ def build_html() -> str:
       updateModeUI();
       markResultDirty();
     });
+    $("eye_side").addEventListener("change", () => {
+      refreshVisuals();
+      if (lastResult) {
+        plotSeries(lastResult);
+      }
+    });
     $("surgery").addEventListener("change", () => {
       updateInterventionUI();
       markResultDirty();
@@ -1882,7 +2053,7 @@ def build_html() -> str:
     $("yag_holes_list").addEventListener("input", updateInterventionUI);
     $("stent_nodes").addEventListener("input", updateInterventionUI);
     document.querySelectorAll("input, select, textarea").forEach((element) => {
-      if (["mode", "surgery", "auto_rtm", "rtm_profile", "plot_type", "trabeculotomies", "yag_holes_list", "stent_nodes"].includes(element.id)) return;
+      if (["mode", "eye_side", "surgery", "auto_rtm", "rtm_profile", "plot_type", "trabeculotomies", "yag_holes_list", "stent_nodes"].includes(element.id)) return;
       element.addEventListener("input", markResultDirty);
       element.addEventListener("change", markResultDirty);
     });
