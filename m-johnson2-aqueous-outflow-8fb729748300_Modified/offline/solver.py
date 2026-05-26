@@ -13,6 +13,21 @@ Xcc = 1200.0  # Distance between adjacent CCs (um)
 dx = 30.0  # Distance between adjacent SC nodes (um)
 
 
+def _expand_network_param(values, count, default, allow_nan=False):
+    if values is None:
+        fill_value = np.nan if allow_nan else default
+        return np.repeat(fill_value, count).astype(dt)
+
+    if np.isscalar(values):
+        fill_value = float(values)
+        return np.repeat(fill_value, count).astype(dt)
+
+    expanded = np.array(values, dtype=dt)
+    if len(expanded) != count:
+        raise ValueError(f'Expected {count} values, got {len(expanded)}')
+    return expanded
+
+
 def get_rcc(iop):
     """
     Calculates overall collector channel resistance.
@@ -112,13 +127,19 @@ def get_gsc(p, i, iop, geometry='ellipse'):
 
     h2 = get_h(p[(i + 1) % (N * M)], iop, (i + 1) % (N * M))
 
+    segment = i % (N * M)
+
     if geometry == 'ellipse':
         gsc = 1.0e-9 * np.pi * W * (h1 ** 2) * (h2 ** 2) / (32 * u * dx * (h1 + h2))
 
     elif geometry == 'rectangle':
         gsc = 1.0e-9 * W * (h1 ** 2) * (h2 ** 2) / (6 * u * dx * (h1 + h2))  # 1e-9 is the conversion factor for
                                                                              # cubic um to ul
-    return gsc
+
+    if not np.isnan(GscOverride[segment]):
+        return GscOverride[segment]
+
+    return gsc * GscMultiplier[segment]
 
 
 def guess_iop(qt):
@@ -560,8 +581,10 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
     **kwargs :
         n (N, # of collector channels), m (M, # of nodes between collector channels), etm (Etm, stiffness of trabecular
         meshwork), h0 (undeformed canal height, if array_like, must have length N*M), rtm (Rtm, trabecular meshwork
-        resistance, if array_like, must have length N*M), ksc (Ks, pressure at which septae support canal), and hs
-        (septae height) can all be changed using **kwargs.
+        resistance, if array_like, must have length N*M), gsc_multiplier (array_like, multiplicative factor for each SC
+        circumferential segment), gsc_override (array_like, direct conductance override for each SC circumferential
+        segment), ksc (Ks, pressure at which septae support canal), and hs (septae height) can all be changed using
+        **kwargs.
 
         Note: While potentially useful to model certain hypothetical scenarios, changing any of these
         values may make the system unstable or inaccurate. The model is especially sensitive to changes
@@ -593,6 +616,10 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
     beta = 1.0
     global Rcc  # Overall CC resistance (mmHg/ul/min)
     Rcc = 0
+    global GscMultiplier  # Multiplicative modifier for each SC circumferential conductance
+    GscMultiplier = np.repeat(1.0, N*M).astype(dt)
+    global GscOverride  # Direct conductance override for each SC circumferential segment
+    GscOverride = np.repeat(np.nan, N*M).astype(dt)
     global Pev  # Episcleral venous pressure (mmHg)
     Pev = 0.0
     global Qu  # Unconventional outflow rate (ul/min)
@@ -630,6 +657,12 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
 
         elif kw == 'rcc' and kwargs[kw] is not None:
             Rcc = float(kwargs[kw])
+
+        elif kw == 'gsc_multiplier' and kwargs[kw] is not None:
+            GscMultiplier = _expand_network_param(kwargs[kw], N*M, 1.0)
+
+        elif kw == 'gsc_override' and kwargs[kw] is not None:
+            GscOverride = _expand_network_param(kwargs[kw], N*M, np.nan, allow_nan=True)
 
         elif kw == 'pev' and kwargs[kw] is not None:
             Pev = float(kwargs[kw])

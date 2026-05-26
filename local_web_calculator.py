@@ -279,6 +279,47 @@ def apply_node_value_overrides(base_values, overrides):
     return values
 
 
+def parse_full_value_array(text, expected_count, label, allow_zero=True):
+    if not text or not str(text).strip():
+        return None
+
+    values = []
+    for chunk in str(text).replace(";", ",").replace("\n", ",").split(","):
+        part = chunk.strip()
+        if not part:
+            continue
+        value = float(part)
+        if value < 0 or (not allow_zero and value == 0):
+            comparator = "greater than zero" if not allow_zero else "zero or greater"
+            raise ValueError(f"{label} values must be {comparator}.")
+        values.append(value)
+
+    if not values:
+        return None
+
+    if len(values) == 1:
+        values = values * expected_count
+    elif len(values) != expected_count:
+        raise ValueError(f"{label} needs either 1 value or exactly {expected_count} values; got {len(values)}.")
+
+    return np.array(values, dtype=md.dt)
+
+
+def parse_value_array_or_overrides(text, expected_count, label, allow_zero=True):
+    if not text or not str(text).strip():
+        return None, []
+
+    chunks = [
+        part.strip()
+        for part in str(text).replace(";", ",").replace("\n", ",").split(",")
+        if part.strip()
+    ]
+    keyed = any((":" in chunk or "=" in chunk) for chunk in chunks)
+    if keyed:
+        return None, parse_node_value_overrides(text, expected_count, label, allow_zero=allow_zero)
+    return parse_full_value_array(text, expected_count, label, allow_zero=allow_zero), []
+
+
 def stent_from_payload(payload: dict) -> md.Stent:
     return build_istent(
         name=str(payload.get("stent_name") or "Custom stent"),
@@ -462,8 +503,21 @@ def solve_payload(payload: dict) -> dict:
         kwargs["unconventional"] = True
 
     total_nodes = int(kwargs.get("n", 30)) * int(kwargs.get("m", 40))
+    max_nodes = total_nodes
+
+    rtm_node_values = parse_full_value_array(
+        payload.get("rtm_node_values"),
+        total_nodes,
+        "TM full node array",
+        allow_zero=False,
+    )
     variable_rtm_profile = parse_segment_profile(payload.get("rtm_profile"), 12, "TM resistance", allow_zero=False)
-    if variable_rtm_profile is not None:
+    if rtm_node_values is not None:
+        kwargs["variable_rtm"] = True
+        kwargs["rtm"] = rtm_node_values
+        meta["rtm_source"] = "tm_node_array"
+        meta["tm_node_count"] = len(rtm_node_values)
+    elif variable_rtm_profile is not None:
         kwargs["variable_rtm"] = True
         kwargs["rtm"] = expand_tm_profile(variable_rtm_profile, total_nodes)
         meta["rtm_source"] = "tm_profile"
@@ -471,25 +525,36 @@ def solve_payload(payload: dict) -> dict:
 
     manual_rtm = finite_float(payload.get("rtm"), None)
     auto_rtm = finite_bool(payload.get("auto_rtm"), False)
-    if variable_rtm_profile is None and auto_rtm and mode == "constant flow":
+    if rtm_node_values is None and variable_rtm_profile is None and auto_rtm and mode == "constant flow":
         baseline_iop = finite_float(payload.get("iop"), 15.09)
         derived_rtm = estimate_rtm_from_baseline_iop(baseline_iop, kwargs)
         kwargs["rtm"] = derived_rtm
         meta["rtm_source"] = "baseline_iop"
         meta["baseline_iop"] = baseline_iop
         meta["rtm_used"] = derived_rtm
-    elif variable_rtm_profile is None and manual_rtm is not None:
+    elif rtm_node_values is None and variable_rtm_profile is None and manual_rtm is not None:
         kwargs["rtm"] = manual_rtm
         meta["rtm_source"] = "manual"
         meta["rtm_used"] = manual_rtm
 
+    h0_node_values = parse_full_value_array(
+        payload.get("h0_node_values"),
+        total_nodes,
+        "SC full node array",
+        allow_zero=True,
+    )
     variable_h0_profile = parse_segment_profile(
         payload.get("h0_profile"),
         int(kwargs.get("n", 30)),
         "SC height",
         allow_zero=True,
     )
-    if variable_h0_profile is not None:
+    if h0_node_values is not None:
+        kwargs["variable_h0"] = True
+        kwargs["h0"] = h0_node_values
+        meta["h0_source"] = "sc_node_array"
+        meta["sc_node_count"] = len(h0_node_values)
+    elif variable_h0_profile is not None:
         kwargs["variable_h0"] = True
         kwargs["h0"] = expand_sc_profile(variable_h0_profile, total_nodes)
         meta["h0_source"] = "sc_profile"
@@ -537,8 +602,39 @@ def solve_payload(payload: dict) -> dict:
             for start, end, value in h0_node_overrides
         ]
 
+    gsc_multiplier_values, gsc_multiplier_overrides = parse_value_array_or_overrides(
+        payload.get("gsc_multiplier"),
+        total_nodes,
+        "SC conductance multiplier",
+        allow_zero=True,
+    )
+    if gsc_multiplier_values is not None:
+        kwargs["gsc_multiplier"] = gsc_multiplier_values
+        meta["gsc_multiplier_source"] = "full_array"
+        meta["gsc_multiplier_count"] = len(gsc_multiplier_values)
+    elif gsc_multiplier_overrides:
+        gsc_multiplier_base = np.repeat(1.0, total_nodes).astype(md.dt)
+        kwargs["gsc_multiplier"] = apply_node_value_overrides(gsc_multiplier_base, gsc_multiplier_overrides)
+        meta["gsc_multiplier_source"] = "override_ranges"
+        meta["gsc_multiplier_override_count"] = len(gsc_multiplier_overrides)
+
+    gsc_override_values, gsc_override_overrides = parse_value_array_or_overrides(
+        payload.get("gsc_override"),
+        total_nodes,
+        "SC conductance override",
+        allow_zero=True,
+    )
+    if gsc_override_values is not None:
+        kwargs["gsc_override"] = gsc_override_values
+        meta["gsc_override_source"] = "full_array"
+        meta["gsc_override_count"] = len(gsc_override_values)
+    elif gsc_override_overrides:
+        gsc_override_base = np.repeat(np.nan, total_nodes).astype(md.dt)
+        kwargs["gsc_override"] = apply_node_value_overrides(gsc_override_base, gsc_override_overrides)
+        meta["gsc_override_source"] = "override_ranges"
+        meta["gsc_override_range_count"] = len(gsc_override_overrides)
+
     stents = None
-    max_nodes = total_nodes
     ccs = parse_ccs(payload.get("ccs"), max_nodes=max_nodes)
     explicit_trabeculotomies = parse_ranges(payload.get("trabeculotomies"))
     explicit_sinusotomies = parse_ranges(payload.get("sinusotomies"))
@@ -1168,9 +1264,17 @@ def build_html() -> str:
             <textarea id="rtm_profile" placeholder="Examples: 24 or 24,24,24,... (12 values) or 1:24, 2:30, ..., 12:24"></textarea>
             <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar RTM and auto RTM.</div>
             <div class="subtle-divider"></div>
+            <label>TM full node array</label>
+            <textarea id="rtm_node_values" placeholder="Examples: 2400 or 2400,2400,... (N*M values)"></textarea>
+            <div class="hint">Direct local TM resistor values for every SC node. Use 1 value to repeat uniformly or exactly N*M values to import a fully non-uniform TM map.</div>
+            <div class="subtle-divider"></div>
             <label>SC baseline height profile</label>
             <textarea id="h0_profile" placeholder="Examples: 20 or 20,20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
             <div class="hint">Takes N segment values, where N is the current collector-channel count. If provided, this overrides scalar h0.</div>
+            <div class="subtle-divider"></div>
+            <label>SC full node array</label>
+            <textarea id="h0_node_values" placeholder="Examples: 20 or 20,20,... (N*M values)"></textarea>
+            <div class="hint">Direct baseline SC height at every node. Use 1 value to repeat uniformly or exactly N*M values for a fully non-uniform SC baseline map.</div>
             <div class="subtle-divider"></div>
             <label>TM node resistance overrides</label>
             <textarea id="rtm_node_overrides" placeholder="Examples: 120:2400, 121-140:3200"></textarea>
@@ -1179,6 +1283,14 @@ def build_html() -> str:
             <label>SC node height overrides</label>
             <textarea id="h0_node_overrides" placeholder="Examples: 120:20, 121-140:14"></textarea>
             <div class="hint">Use this to locally change the SC baseline height at arbitrary nodes. This is the closest direct way to modify local SC circumferential resistance in the current solver.</div>
+            <div class="subtle-divider"></div>
+            <label>SC conductance multiplier</label>
+            <textarea id="gsc_multiplier" placeholder="Examples: 1.0 or 1.0,1.0,... (N*M values) or 120:0.5, 121-140:2.0"></textarea>
+            <div class="hint">Applies a multiplicative factor to each circumferential SC segment conductance between node i and i+1. Accepts either 1/exact N*M values or segment:value overrides.</div>
+            <div class="subtle-divider"></div>
+            <label>SC conductance override</label>
+            <textarea id="gsc_override" placeholder="Examples: 0.002 or 0.002,0.002,... (N*M values) or 120:0.0, 121-140:0.003"></textarea>
+            <div class="hint">Directly replaces the computed conductance of selected SC segments. Segment i means the link between node i and node i+1. This overrides the height-based conductance calculation for those segments.</div>
           </div>
         </details>
 
@@ -1355,8 +1467,12 @@ def build_html() -> str:
         unconventional: $("unconventional").checked,
         ccs: $("ccs").value,
         rtm_profile: $("rtm_profile").value,
+        rtm_node_values: $("rtm_node_values").value,
         rtm_node_overrides: $("rtm_node_overrides").value,
+        h0_node_values: $("h0_node_values").value,
         h0_node_overrides: $("h0_node_overrides").value,
+        gsc_multiplier: $("gsc_multiplier").value,
+        gsc_override: $("gsc_override").value,
         surgery: $("surgery").value,
         trab_hours: $("trab_hours").value,
         trabeculotomies: $("trabeculotomies").value,
@@ -1750,8 +1866,9 @@ def build_html() -> str:
         sinusotomies: result?.meta?.sinusotomies || parseRangesText(currentPayload.sinusotomies),
         yagHoles,
         stents,
-        tmProfile: parseProfileValues(currentPayload.rtm_profile, 12),
-        scProfile: parseProfileValues(currentPayload.h0_profile, nSegments),
+        tmProfile: parseProfileValues(currentPayload.rtm_node_values, totalNodes) || parseProfileValues(currentPayload.rtm_profile, 12),
+        scProfile: parseProfileValues(currentPayload.h0_node_values, totalNodes) || parseProfileValues(currentPayload.h0_profile, nSegments),
+        hasGscControl: !!(String(currentPayload.gsc_multiplier || "").trim() || String(currentPayload.gsc_override || "").trim()),
         surgery: currentPayload.surgery,
       };
     }
@@ -1766,6 +1883,7 @@ def build_html() -> str:
       lines.push(`<div><b>${model.ccs.length}</b> collector channels across <b>${model.totalNodes}</b> SC nodes.</div>`);
       lines.push(`<div>Interventions: trab <b>${model.trabeculotomies.length}</b>, sinus <b>${model.sinusotomies.length}</b>, YAG <b>${model.yagHoles.length}</b>, stents <b>${model.stents.length}</b>.</div>`);
       lines.push(`<div>Profiles: TM ${model.tmProfile ? "<b>variable</b>" : "scalar"} | SC height ${model.scProfile ? "<b>variable</b>" : "scalar"}.</div>`);
+      if (model.hasGscControl) lines.push(`<div>SC circumferential conductance: <b>customized</b>.</div>`);
       lines.push(`<div>Eye orientation: <b>${labels.eye}</b> with <b>${labels.left}</b> on the left and <b>${labels.right}</b> on the right.</div>`);
       $("setup_summary").innerHTML = lines.join("");
     }
@@ -1868,17 +1986,20 @@ def build_html() -> str:
     function updateModeUI() {
       const isConstantPressure = $("mode").value === "constant pressure";
       const hasVariableRtmProfile = $("rtm_profile").value.trim().length > 0;
-      const autoRtmEnabled = $("auto_rtm").checked && !isConstantPressure && !hasVariableRtmProfile;
+      const hasFullRtmArray = $("rtm_node_values").value.trim().length > 0;
+      const autoRtmEnabled = $("auto_rtm").checked && !isConstantPressure && !hasVariableRtmProfile && !hasFullRtmArray;
       $("iop_label").textContent = isConstantPressure ? "IOP" : "Baseline IOP";
       $("iop").value = $("iop").value || (isConstantPressure ? "7.0" : "15.09");
       $("iop_hint").textContent = isConstantPressure
         ? "In constant pressure mode, IOP is the target pressure for the solve."
-        : hasVariableRtmProfile
+        : hasFullRtmArray
+          ? "Baseline IOP and scalar RTM are ignored while a full TM node array is present. Clear the node array to re-enable auto RTM."
+          : hasVariableRtmProfile
           ? "Baseline IOP is not used while a TM resistance profile is present. Clear the profile to re-enable auto RTM."
           : "In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled. The estimate assumes a baseline eye with no surgeries and default collector channels.";
-      $("auto_rtm").disabled = isConstantPressure || hasVariableRtmProfile;
-      $("rtm").disabled = autoRtmEnabled || hasVariableRtmProfile;
-      $("rtm").placeholder = hasVariableRtmProfile ? "overridden by TM profile" : (autoRtmEnabled ? "derived automatically" : "default");
+      $("auto_rtm").disabled = isConstantPressure || hasVariableRtmProfile || hasFullRtmArray;
+      $("rtm").disabled = autoRtmEnabled || hasVariableRtmProfile || hasFullRtmArray;
+      $("rtm").placeholder = hasFullRtmArray ? "overridden by full TM node array" : (hasVariableRtmProfile ? "overridden by TM profile" : (autoRtmEnabled ? "derived automatically" : "default"));
     }
 
     function updateInterventionUI() {
@@ -1925,14 +2046,30 @@ def build_html() -> str:
       if (meta.rtm_source === "tm_profile") {
         parts.push(`Variable TM profile used: ${meta.tm_profile_segments || 12} segments.`);
       }
+      if (meta.rtm_source === "tm_node_array") {
+        parts.push(`Full TM node array used: ${meta.tm_node_count || $("n").value * $("m").value} nodes.`);
+      }
       if (meta.h0_source === "sc_profile") {
         parts.push(`Variable SC profile used: ${meta.sc_profile_segments || $("n").value || 30} segments.`);
+      }
+      if (meta.h0_source === "sc_node_array") {
+        parts.push(`Full SC node array used: ${meta.sc_node_count || $("n").value * $("m").value} nodes.`);
       }
       if (meta.rtm_override_count) {
         parts.push(`TM node overrides applied: ${meta.rtm_override_count}.`);
       }
       if (meta.h0_override_count) {
         parts.push(`SC node height overrides applied: ${meta.h0_override_count}.`);
+      }
+      if (meta.gsc_multiplier_count) {
+        parts.push(`Full SC conductance multiplier array used: ${meta.gsc_multiplier_count} segments.`);
+      } else if (meta.gsc_multiplier_override_count) {
+        parts.push(`SC conductance multiplier overrides applied: ${meta.gsc_multiplier_override_count}.`);
+      }
+      if (meta.gsc_override_count) {
+        parts.push(`Full SC conductance override array used: ${meta.gsc_override_count} segments.`);
+      } else if (meta.gsc_override_range_count) {
+        parts.push(`SC conductance overrides applied: ${meta.gsc_override_range_count}.`);
       }
       return parts.join(" ");
     }
@@ -2155,11 +2292,15 @@ def build_html() -> str:
       updateModeUI();
       markResultDirty();
     });
+    $("rtm_node_values").addEventListener("input", () => {
+      updateModeUI();
+      markResultDirty();
+    });
     $("trabeculotomies").addEventListener("input", updateInterventionUI);
     $("yag_holes_list").addEventListener("input", updateInterventionUI);
     $("stent_nodes").addEventListener("input", updateInterventionUI);
     document.querySelectorAll("input, select, textarea").forEach((element) => {
-      if (["mode", "eye_side", "surgery", "auto_rtm", "rtm_profile", "plot_type", "trabeculotomies", "yag_holes_list", "stent_nodes"].includes(element.id)) return;
+      if (["mode", "eye_side", "surgery", "auto_rtm", "rtm_profile", "rtm_node_values", "plot_type", "trabeculotomies", "yag_holes_list", "stent_nodes"].includes(element.id)) return;
       element.addEventListener("input", markResultDirty);
       element.addEventListener("change", markResultDirty);
     });

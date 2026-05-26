@@ -663,9 +663,19 @@ def build_html() -> str:
             <div class="hint">Takes 12 clock-hour values. Overrides scalar RTM and auto RTM when present.</div>
           </div>
           <div class="field">
+            <label>TM full node array</label>
+            <textarea id="rtm_node_values" placeholder="2400 or 2400,2400,... (N*M values)"></textarea>
+            <div class="hint">Direct local TM resistor values for every SC node. Use 1 value to repeat uniformly or exactly N*M values to import a fully non-uniform TM map.</div>
+          </div>
+          <div class="field">
             <label>SC baseline height profile</label>
             <textarea id="h0_profile" placeholder="20 or 20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
             <div class="hint">Takes N segment values, where N is the current collector-channel count.</div>
+          </div>
+          <div class="field">
+            <label>SC full node array</label>
+            <textarea id="h0_node_values" placeholder="20 or 20,20,... (N*M values)"></textarea>
+            <div class="hint">Direct baseline SC height at every node. Use 1 value to repeat uniformly or exactly N*M values for a fully non-uniform SC baseline map.</div>
           </div>
           <div class="field">
             <label>TM node resistance overrides</label>
@@ -676,6 +686,16 @@ def build_html() -> str:
             <label>SC node height overrides</label>
             <textarea id="h0_node_overrides" placeholder="120:20, 121-140:14"></textarea>
             <div class="hint">Use this to locally modify baseline SC height, which is the closest direct handle on local SC circumferential resistance in the current solver.</div>
+          </div>
+          <div class="field">
+            <label>SC conductance multiplier</label>
+            <textarea id="gsc_multiplier" placeholder="1.0 or 1.0,1.0,... (N*M values) or 120:0.5, 121-140:2.0"></textarea>
+            <div class="hint">Applies a multiplicative factor to each circumferential SC segment conductance between node i and i+1. Accepts either 1/exact N*M values or segment:value overrides.</div>
+          </div>
+          <div class="field">
+            <label>SC conductance override</label>
+            <textarea id="gsc_override" placeholder="0.002 or 0.002,0.002,... (N*M values) or 120:0.0, 121-140:0.003"></textarea>
+            <div class="hint">Directly replaces the computed conductance of selected SC segments. Segment i means the link between node i and node i+1.</div>
           </div>
         </div>
       </div>
@@ -869,8 +889,12 @@ def build_html() -> str:
         unconventional: $("unconventional").checked,
         ccs: $("ccs").value,
         rtm_profile: $("rtm_profile").value,
+        rtm_node_values: $("rtm_node_values").value,
         rtm_node_overrides: $("rtm_node_overrides").value,
+        h0_node_values: $("h0_node_values").value,
         h0_node_overrides: $("h0_node_overrides").value,
+        gsc_multiplier: $("gsc_multiplier").value,
+        gsc_override: $("gsc_override").value,
         surgery: $("surgery").value,
         trab_hours: $("trab_hours").value,
         trabeculotomies: $("trabeculotomies").value,
@@ -1263,8 +1287,9 @@ def build_html() -> str:
         sinusotomies: result?.meta?.sinusotomies || parseRangesText(currentPayload.sinusotomies),
         yagHoles,
         stents,
-        tmProfile: parseProfileValues(currentPayload.rtm_profile, 12),
-        scProfile: parseProfileValues(currentPayload.h0_profile, nSegments),
+        tmProfile: parseProfileValues(currentPayload.rtm_node_values, totalNodes) || parseProfileValues(currentPayload.rtm_profile, 12),
+        scProfile: parseProfileValues(currentPayload.h0_node_values, totalNodes) || parseProfileValues(currentPayload.h0_profile, nSegments),
+        hasGscControl: !!(String(currentPayload.gsc_multiplier || "").trim() || String(currentPayload.gsc_override || "").trim()),
         surgery: currentPayload.surgery,
       };
     }
@@ -1351,6 +1376,7 @@ def build_html() -> str:
         <div><b>${model.ccs.length}</b> collector channels across <b>${model.totalNodes}</b> SC nodes.</div>
         <div>Interventions: trab <b>${model.trabeculotomies.length}</b>, sinus <b>${model.sinusotomies.length}</b>, YAG <b>${model.yagHoles.length}</b>, stents <b>${model.stents.length}</b>.</div>
         <div>Profiles: TM ${model.tmProfile ? "<b>variable</b>" : "scalar"} | SC height ${model.scProfile ? "<b>variable</b>" : "scalar"}.</div>
+        ${model.hasGscControl ? "<div>SC circumferential conductance: <b>customized</b>.</div>" : ""}
         <div>Eye orientation: <b>${labels.eye}</b> with <b>${labels.left}</b> on the left and <b>${labels.right}</b> on the right.</div>
       `;
     }
@@ -1519,8 +1545,14 @@ def build_html() -> str:
       if (meta.rtm_source === "tm_profile") {
         parts.push(`Variable TM profile used: ${meta.tm_profile_segments || 12} segments.`);
       }
+      if (meta.rtm_source === "tm_node_array") {
+        parts.push(`Full TM node array used: ${meta.tm_node_count || $("n").value * $("m").value} nodes.`);
+      }
       if (meta.h0_source === "sc_profile") {
         parts.push(`Variable SC profile used: ${meta.sc_profile_segments || $("n").value || 30} segments.`);
+      }
+      if (meta.h0_source === "sc_node_array") {
+        parts.push(`Full SC node array used: ${meta.sc_node_count || $("n").value * $("m").value} nodes.`);
       }
       if (meta.rtm_override_count) {
         parts.push(`TM node overrides applied: ${meta.rtm_override_count}.`);
@@ -1528,23 +1560,36 @@ def build_html() -> str:
       if (meta.h0_override_count) {
         parts.push(`SC node height overrides applied: ${meta.h0_override_count}.`);
       }
+      if (meta.gsc_multiplier_count) {
+        parts.push(`Full SC conductance multiplier array used: ${meta.gsc_multiplier_count} segments.`);
+      } else if (meta.gsc_multiplier_override_count) {
+        parts.push(`SC conductance multiplier overrides applied: ${meta.gsc_multiplier_override_count}.`);
+      }
+      if (meta.gsc_override_count) {
+        parts.push(`Full SC conductance override array used: ${meta.gsc_override_count} segments.`);
+      } else if (meta.gsc_override_range_count) {
+        parts.push(`SC conductance overrides applied: ${meta.gsc_override_range_count}.`);
+      }
       return parts.join(" ");
     }
 
     function updateModeUI() {
       const isConstantPressure = $("mode").value === "constant pressure";
       const hasVariableRtmProfile = $("rtm_profile").value.trim().length > 0;
-      const autoRtmEnabled = $("auto_rtm").checked && !isConstantPressure && !hasVariableRtmProfile;
+      const hasFullRtmArray = $("rtm_node_values").value.trim().length > 0;
+      const autoRtmEnabled = $("auto_rtm").checked && !isConstantPressure && !hasVariableRtmProfile && !hasFullRtmArray;
       $("iop_label").textContent = isConstantPressure ? "IOP (mmHg)" : "Baseline IOP (mmHg)";
       $("qt_label").textContent = isConstantPressure ? "Flowrate reference (uL/min)" : "Flowrate (uL/min)";
       $("iop_hint").textContent = isConstantPressure
         ? "In constant pressure mode, this is the target IOP for the solve."
-        : hasVariableRtmProfile
+        : hasFullRtmArray
+          ? "Baseline IOP and scalar RTM are ignored while a full TM node array is present."
+          : hasVariableRtmProfile
           ? "Baseline IOP is ignored while a TM resistance profile is present."
           : "In constant flow mode, this is used to estimate baseline TM resistance.";
-      $("auto_rtm").disabled = isConstantPressure || hasVariableRtmProfile;
-      $("rtm").disabled = autoRtmEnabled || hasVariableRtmProfile;
-      $("rtm").placeholder = hasVariableRtmProfile ? "overridden by TM profile" : (autoRtmEnabled ? "derived automatically" : "default");
+      $("auto_rtm").disabled = isConstantPressure || hasVariableRtmProfile || hasFullRtmArray;
+      $("rtm").disabled = autoRtmEnabled || hasVariableRtmProfile || hasFullRtmArray;
+      $("rtm").placeholder = hasFullRtmArray ? "overridden by full TM node array" : (hasVariableRtmProfile ? "overridden by TM profile" : (autoRtmEnabled ? "derived automatically" : "default"));
     }
 
     function summarizeRanges(text) {
@@ -1708,6 +1753,10 @@ def build_html() -> str:
       updateModeUI();
       markResultDirty();
     });
+    $("rtm_node_values").addEventListener("input", () => {
+      updateModeUI();
+      markResultDirty();
+    });
 
     ["trabeculotomies", "trab_hours", "sinusotomies", "stent_nodes", "yag_holes", "yag_holes_list"].forEach((id) => {
       $(id).addEventListener("input", updateInterventionUI);
@@ -1715,7 +1764,7 @@ def build_html() -> str:
     });
 
     document.querySelectorAll("input, select, textarea").forEach((element) => {
-      if (["mode", "auto_rtm", "rtm_profile", "plot_type", "eye_side", "trabeculotomies", "trab_hours", "sinusotomies", "stent_nodes", "yag_holes", "yag_holes_list"].includes(element.id)) return;
+      if (["mode", "auto_rtm", "rtm_profile", "rtm_node_values", "plot_type", "eye_side", "trabeculotomies", "trab_hours", "sinusotomies", "stent_nodes", "yag_holes", "yag_holes_list"].includes(element.id)) return;
       element.addEventListener("input", markResultDirty);
       element.addEventListener("change", markResultDirty);
     });
