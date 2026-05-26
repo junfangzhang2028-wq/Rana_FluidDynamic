@@ -231,6 +231,54 @@ def expand_sc_profile(values, total_nodes):
     return expanded
 
 
+def parse_node_value_overrides(text, max_nodes, label, allow_zero=False):
+    if not text or not str(text).strip():
+        return []
+
+    overrides = []
+    for chunk in str(text).replace(";", ",").replace("\n", ",").split(","):
+        part = chunk.strip()
+        if not part:
+            continue
+
+        if ":" in part:
+            range_text, value_text = part.split(":", 1)
+        elif "=" in part:
+            range_text, value_text = part.split("=", 1)
+        else:
+            raise ValueError(f"{label} overrides must use node:value or start-end:value format.")
+
+        range_text = range_text.strip()
+        value = float(value_text.strip())
+        if value < 0 or (not allow_zero and value == 0):
+            comparator = "greater than zero" if not allow_zero else "zero or greater"
+            raise ValueError(f"{label} override values must be {comparator}.")
+
+        if "-" in range_text:
+            left, right = range_text.split("-", 1)
+            start = int(float(left.strip()))
+            end = int(float(right.strip()))
+        else:
+            start = end = int(float(range_text))
+
+        if end < start:
+            start, end = end, start
+        if start < 0 or end < 0:
+            raise ValueError(f"{label} override node indexes must be non-negative.")
+        if max_nodes is not None and end >= max_nodes:
+            raise ValueError(f"{label} override {start}-{end} is outside the current 0-{max_nodes - 1} node range.")
+        overrides.append((start, end, value))
+
+    return overrides
+
+
+def apply_node_value_overrides(base_values, overrides):
+    values = np.array(base_values, dtype=md.dt, copy=True)
+    for start, end, value in overrides:
+        values[start:end + 1] = value
+    return values
+
+
 def stent_from_payload(payload: dict) -> md.Stent:
     return build_istent(
         name=str(payload.get("stent_name") or "Custom stent"),
@@ -446,6 +494,48 @@ def solve_payload(payload: dict) -> dict:
         kwargs["h0"] = expand_sc_profile(variable_h0_profile, total_nodes)
         meta["h0_source"] = "sc_profile"
         meta["sc_profile_segments"] = len(variable_h0_profile)
+
+    tm_node_overrides = parse_node_value_overrides(
+        payload.get("rtm_node_overrides"),
+        max_nodes=total_nodes,
+        label="TM resistance",
+        allow_zero=False,
+    )
+    if tm_node_overrides:
+        if kwargs.get("variable_rtm") and kwargs.get("rtm") is not None:
+            tm_base = np.array(kwargs["rtm"], dtype=md.dt, copy=True)
+        elif kwargs.get("rtm") is not None:
+            tm_base = np.repeat(float(kwargs["rtm"]) * total_nodes, total_nodes).astype(md.dt)
+        else:
+            tm_base = np.repeat(2.0 * total_nodes, total_nodes).astype(md.dt)
+        kwargs["variable_rtm"] = True
+        kwargs["rtm"] = apply_node_value_overrides(tm_base, tm_node_overrides)
+        meta["rtm_override_count"] = len(tm_node_overrides)
+        meta["rtm_overrides"] = [
+            {"start": int(start), "end": int(end), "value": float(value)}
+            for start, end, value in tm_node_overrides
+        ]
+
+    h0_node_overrides = parse_node_value_overrides(
+        payload.get("h0_node_overrides"),
+        max_nodes=total_nodes,
+        label="SC height",
+        allow_zero=True,
+    )
+    if h0_node_overrides:
+        if kwargs.get("variable_h0") and kwargs.get("h0") is not None:
+            h0_base = np.array(kwargs["h0"], dtype=md.dt, copy=True)
+        elif kwargs.get("h0") is not None:
+            h0_base = np.repeat(float(kwargs["h0"]), total_nodes).astype(md.dt)
+        else:
+            h0_base = np.repeat(20.0, total_nodes).astype(md.dt)
+        kwargs["variable_h0"] = True
+        kwargs["h0"] = apply_node_value_overrides(h0_base, h0_node_overrides)
+        meta["h0_override_count"] = len(h0_node_overrides)
+        meta["h0_overrides"] = [
+            {"start": int(start), "end": int(end), "value": float(value)}
+            for start, end, value in h0_node_overrides
+        ]
 
     stents = None
     max_nodes = total_nodes
@@ -1081,6 +1171,14 @@ def build_html() -> str:
             <label>SC baseline height profile</label>
             <textarea id="h0_profile" placeholder="Examples: 20 or 20,20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
             <div class="hint">Takes N segment values, where N is the current collector-channel count. If provided, this overrides scalar h0.</div>
+            <div class="subtle-divider"></div>
+            <label>TM node resistance overrides</label>
+            <textarea id="rtm_node_overrides" placeholder="Examples: 120:2400, 121-140:3200"></textarea>
+            <div class="hint">Format is node:value or start-end:value. Values are local per-node TM resistors, so these apply after auto RTM, scalar RTM, or the 12-segment TM profile.</div>
+            <div class="subtle-divider"></div>
+            <label>SC node height overrides</label>
+            <textarea id="h0_node_overrides" placeholder="Examples: 120:20, 121-140:14"></textarea>
+            <div class="hint">Use this to locally change the SC baseline height at arbitrary nodes. This is the closest direct way to modify local SC circumferential resistance in the current solver.</div>
           </div>
         </details>
 
@@ -1257,6 +1355,8 @@ def build_html() -> str:
         unconventional: $("unconventional").checked,
         ccs: $("ccs").value,
         rtm_profile: $("rtm_profile").value,
+        rtm_node_overrides: $("rtm_node_overrides").value,
+        h0_node_overrides: $("h0_node_overrides").value,
         surgery: $("surgery").value,
         trab_hours: $("trab_hours").value,
         trabeculotomies: $("trabeculotomies").value,
@@ -1827,6 +1927,12 @@ def build_html() -> str:
       }
       if (meta.h0_source === "sc_profile") {
         parts.push(`Variable SC profile used: ${meta.sc_profile_segments || $("n").value || 30} segments.`);
+      }
+      if (meta.rtm_override_count) {
+        parts.push(`TM node overrides applied: ${meta.rtm_override_count}.`);
+      }
+      if (meta.h0_override_count) {
+        parts.push(`SC node height overrides applied: ${meta.h0_override_count}.`);
       }
       return parts.join(" ");
     }

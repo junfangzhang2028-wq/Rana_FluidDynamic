@@ -667,6 +667,16 @@ def build_html() -> str:
             <textarea id="h0_profile" placeholder="20 or 20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
             <div class="hint">Takes N segment values, where N is the current collector-channel count.</div>
           </div>
+          <div class="field">
+            <label>TM node resistance overrides</label>
+            <textarea id="rtm_node_overrides" placeholder="120:2400, 121-140:3200"></textarea>
+            <div class="hint">Format is node:value or start-end:value. These are local per-node TM resistor values and apply after auto RTM, scalar RTM, or the 12-segment TM profile.</div>
+          </div>
+          <div class="field">
+            <label>SC node height overrides</label>
+            <textarea id="h0_node_overrides" placeholder="120:20, 121-140:14"></textarea>
+            <div class="hint">Use this to locally modify baseline SC height, which is the closest direct handle on local SC circumferential resistance in the current solver.</div>
+          </div>
         </div>
       </div>
       <div class="dialog-actions">
@@ -859,6 +869,8 @@ def build_html() -> str:
         unconventional: $("unconventional").checked,
         ccs: $("ccs").value,
         rtm_profile: $("rtm_profile").value,
+        rtm_node_overrides: $("rtm_node_overrides").value,
+        h0_node_overrides: $("h0_node_overrides").value,
         surgery: $("surgery").value,
         trab_hours: $("trab_hours").value,
         trabeculotomies: $("trabeculotomies").value,
@@ -982,29 +994,38 @@ def build_html() -> str:
       return parts.join("");
     }
 
-    function drawAnatomyOverlay(cx, cy, innerRadius, outerRadius, frameWidth) {
+    function drawAnatomyOverlay(cx, cy, innerRadius, outerRadius, frameWidth, options = {}) {
       const labels = eyeLabels();
       const colors = anatomyColors();
       const boundaries = [45, 135, 225, 315];
       const parts = [];
+      const includeSectors = options.includeSectors !== false;
+      const includeLabels = options.includeLabels !== false;
+      const includeDividers = options.includeDividers !== false;
 
-      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 315, 90)}" fill="${colors.Superior}"></path>`);
-      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 45, 90)}" fill="${colors[labels.right]}"></path>`);
-      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 135, 90)}" fill="${colors.Inferior}"></path>`);
-      parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 225, 90)}" fill="${colors[labels.left]}"></path>`);
+      if (includeSectors) {
+        parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 315, 90)}" fill="${colors.Superior}"></path>`);
+        parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 45, 90)}" fill="${colors[labels.right]}"></path>`);
+        parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 135, 90)}" fill="${colors.Inferior}"></path>`);
+        parts.push(`<path class="anatomy-sector" d="${annularSectorPath(cx, cy, innerRadius, outerRadius, 225, 90)}" fill="${colors[labels.left]}"></path>`);
+      }
 
-      boundaries.forEach((degrees) => {
-        const inner = polarPoint(cx, cy, innerRadius, degrees);
-        const outer = polarPoint(cx, cy, outerRadius, degrees);
-        parts.push(`<line class="anatomy-divider" x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}"></line>`);
-      });
+      if (includeDividers) {
+        boundaries.forEach((degrees) => {
+          const inner = polarPoint(cx, cy, innerRadius, degrees);
+          const outer = polarPoint(cx, cy, outerRadius, degrees);
+          parts.push(`<line class="anatomy-divider" x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}"></line>`);
+        });
+      }
 
-      const leftX = Math.max(24, cx - outerRadius - 50);
-      const rightX = Math.min(frameWidth - 24, cx + outerRadius + 50);
-      parts.push(`<text x="${cx.toFixed(2)}" y="${(cy - outerRadius - 34).toFixed(2)}" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Superior</text>`);
-      parts.push(`<text x="${cx.toFixed(2)}" y="${(cy + outerRadius + 34).toFixed(2)}" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Inferior</text>`);
-      parts.push(`<text x="${leftX.toFixed(2)}" y="${cy.toFixed(2)}" text-anchor="start" dominant-baseline="central" class="anatomy-label-side">${labels.left}</text>`);
-      parts.push(`<text x="${rightX.toFixed(2)}" y="${cy.toFixed(2)}" text-anchor="end" dominant-baseline="central" class="anatomy-label-side">${labels.right}</text>`);
+      if (includeLabels) {
+        const leftX = Math.max(24, cx - outerRadius - 50);
+        const rightX = Math.min(frameWidth - 24, cx + outerRadius + 50);
+        parts.push(`<text x="${cx.toFixed(2)}" y="${(cy - outerRadius - 34).toFixed(2)}" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Superior</text>`);
+        parts.push(`<text x="${cx.toFixed(2)}" y="${(cy + outerRadius + 34).toFixed(2)}" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Inferior</text>`);
+        parts.push(`<text x="${leftX.toFixed(2)}" y="${cy.toFixed(2)}" text-anchor="start" dominant-baseline="central" class="anatomy-label-side">${labels.left}</text>`);
+        parts.push(`<text x="${rightX.toFixed(2)}" y="${cy.toFixed(2)}" text-anchor="end" dominant-baseline="central" class="anatomy-label-side">${labels.right}</text>`);
+      }
       return parts.join("");
     }
 
@@ -1265,7 +1286,7 @@ def build_html() -> str:
 
       parts.push(`<rect x="0" y="0" width="520" height="520" fill="transparent"></rect>`);
       parts.push(drawTicks(cx, cy, 222));
-      parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 20, ccRadius + 24, 520));
+      parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 20, ccRadius + 24, 520, { includeLabels: false, includeDividers: false }));
       parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius}" fill="none" stroke="#c4c4c4" stroke-width="52"></circle>`);
       parts.push(`<circle cx="${cx}" cy="${cy}" r="${tmRadius}" fill="none" stroke="#ef3932" stroke-width="28"></circle>`);
 
@@ -1319,6 +1340,7 @@ def build_html() -> str:
         parts.push(`<circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="6" fill="white" stroke="#bf3f6d" stroke-width="3"></circle>`);
       });
 
+      parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 20, ccRadius + 24, 520, { includeSectors: false }));
       parts.push(`<text x="${cx}" y="${cy - 4}" text-anchor="middle" class="stage-title">Anterior Chamber</text>`);
       parts.push(`<text x="${cx - 92}" y="${cy - 178}" transform="rotate(-12 ${cx - 92} ${cy - 178})" class="stage-title">Collector Channels</text>`);
       parts.push(`<text x="${cx - 76}" y="${cy - 128}" transform="rotate(-12 ${cx - 76} ${cy - 128})" class="stage-title">Schlemm's Canal</text>`);
@@ -1389,7 +1411,7 @@ def build_html() -> str:
       parts.push(`<text x="58" y="72" class="stage-label">${fmt(pHigh)} mmHg</text>`);
       parts.push(`<text x="58" y="342" class="stage-label">${fmt(pLow)} mmHg</text>`);
       parts.push(drawTicks(cx, cy, 226));
-      parts.push(drawAnatomyOverlay(cx, cy, heightRadius - 18, ccRadius + 18, 620));
+      parts.push(drawAnatomyOverlay(cx, cy, heightRadius - 18, ccRadius + 18, 620, { includeLabels: false, includeDividers: false }));
 
       pressure.forEach((value, idx) => {
         const start = 360 * idx / totalNodes;
@@ -1413,6 +1435,7 @@ def build_html() -> str:
         parts.push(`<line class="hoverable" data-kind="cc" data-loc="${cc.loc}" data-flow="${jcc[idx]}" x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="${color}" stroke-width="4" stroke-linecap="round"></line>`);
       });
 
+      parts.push(drawAnatomyOverlay(cx, cy, heightRadius - 18, ccRadius + 18, 620, { includeSectors: false }));
       parts.push(`<text x="${cx}" y="${cy - 8}" text-anchor="middle" class="stage-title">Solution Map</text>`);
       parts.push(`<text x="${cx}" y="${cy + 16}" text-anchor="middle" class="stage-label">Outer ring: pressure | Inner ring: canal height</text>`);
       svg.innerHTML = parts.join("");
@@ -1498,6 +1521,12 @@ def build_html() -> str:
       }
       if (meta.h0_source === "sc_profile") {
         parts.push(`Variable SC profile used: ${meta.sc_profile_segments || $("n").value || 30} segments.`);
+      }
+      if (meta.rtm_override_count) {
+        parts.push(`TM node overrides applied: ${meta.rtm_override_count}.`);
+      }
+      if (meta.h0_override_count) {
+        parts.push(`SC node height overrides applied: ${meta.h0_override_count}.`);
       }
       return parts.join(" ");
     }
