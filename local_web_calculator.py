@@ -145,7 +145,7 @@ def parse_ccs(text, max_nodes=None):
         if max_nodes is not None and loc >= max_nodes:
             raise ValueError(f"Collector channel node {loc} is outside the current 0-{max_nodes - 1} node range.")
         if ratio <= 0:
-            raise ValueError("Collector channel conductance ratios must be greater than zero.")
+            raise ValueError("Collector channel conductance multipliers must be greater than zero.")
         ccs.append((loc, ratio))
 
     if not ccs:
@@ -1166,7 +1166,7 @@ def build_html() -> str:
               <div><label>Rtm</label><input id="rtm" type="number" step="0.1" placeholder="default" /></div>
             </div>
             <div class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP</span></div>
-            <div class="hint">Matches the online calculator idea: infer Rtm from a baseline eye with no surgeries and default CC distribution.</div>
+            <div class="hint">Matches the online calculator idea: infer Rtm from a baseline eye with no surgeries and default CC distribution. If unconventional flow is enabled, Auto RTM recalibrates Rtm to keep the same baseline IOP.</div>
           </div>
         </details>
 
@@ -1238,7 +1238,7 @@ def build_html() -> str:
             </div>
             <div class="grid2">
               <div><label>hs (um)</label><input id="hs" type="number" step="0.1" value="3.0" /></div>
-              <div><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto" /></div>
+              <div><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto (~1.5 at 15 mmHg)" /></div>
             </div>
             <div class="grid2">
               <div><label>Qu</label><input id="qu" type="number" step="0.01" value="0.28" /></div>
@@ -1305,8 +1305,8 @@ def build_html() -> str:
           <div class="section-body">
             <label>Manual CC distribution</label>
             <textarea id="ccs" placeholder="Example: 0:1, 40:1, 80:0.5, 120:2"></textarea>
-            <div class="hint">Format is node:relative conductance. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
-            <div class="hint">If only a node is provided, ratio defaults to 1; for example 0, 40, 80.</div>
+            <div class="hint">Format is node:per-channel conductance multiplier. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
+            <div class="hint">A multiplier changes only that collector channel; if only a node is provided, the multiplier defaults to 1.</div>
           </div>
         </details>
 
@@ -1318,7 +1318,8 @@ def build_html() -> str:
             </div>
             <span class="panel-toggle">Advanced</span>
           </summary>
-          <div class="section-body">
+            <div class="section-body">
+            <div class="hint">iStent inject example: length 230 um, inlet offset 115 um, width 50 um, height 50 um, after height 150 um, inlet conductance 42.15, two-way checked, ellipse geometry.</div>
             <label>Name</label>
             <input id="stent_name" type="text" value="Custom iStent" />
             <div class="grid2">

@@ -228,9 +228,9 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
     stents : array_like of (int, Stent)
         Each element is of the form (start index, stent). Default is None for no stents.
     ccs : array_like of tuples (int, float)
-        Each element is of the form (index, relative conductance ratio), where 'index' is the location
-        of a collector channel and relative conductance ratio is the conductance ratio relative to the
-        other collector channels.
+        Each element is of the form (index, conductance multiplier), where 'index' is the location
+        of a collector channel and conductance multiplier scales that one collector channel relative
+        to the baseline per-channel conductance.
 
     Returns
     -------
@@ -254,6 +254,7 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
         tm_removed = False
         ow_removed = False
         inlet = False
+        inlet_g = 0.0
         spine = False
         window = False
 
@@ -292,6 +293,7 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
             for loc, stent in stents:
                 if loc < i < loc + len(stent):
                     if stent[i - loc][1] == 'inlet':
+                        inlet_g = stent[i - loc][0]
                         if stent[i - loc + 1][1] != 'inlet':
                             gsc2 = stent[i - loc + 1][0]
 
@@ -318,10 +320,12 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                                 gsc2 = stent[i - loc][0]
                             else:
                                 gsc2 = 0
-                            g_add = gsc2
+                            if stent[i - loc + 1][0] <= 0:
+                                g_add = gsc2
 
                         if stent[i - loc - 1][1] == 'inlet':
-                            g_add = gsc
+                            if stent[i - loc - 1][0] <= 0:
+                                g_add = gsc
 
                         spine = True
 
@@ -335,7 +339,8 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                                 gsc2 = stent[i - loc][0]
                             else:
                                 gsc2 = 0
-                            g_add = gsc2
+                            if stent[i - loc + 1][0] <= 0:
+                                g_add = gsc2
 
                         window = True
 
@@ -346,6 +351,7 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                         gsc = 0
                         gsc2 = 0
                         inlet = True
+                        inlet_g = stent[0][0]
 
                     elif stent[0][1] != 'inlet':
                         gsc2 = stent[0][0]
@@ -358,8 +364,9 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
 
                     elif stent[0][1] == 'inlet':
                         inlet = True
+                        inlet_g = stent[0][0]
 
-                    if stent[1][1] == 'inlet':
+                    if stent[1][1] == 'inlet' and stent[1][0] <= 0:
                         g_add = gsc2
 
                     break
@@ -372,7 +379,8 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                         gsc2 = stent[0][0]
 
                     else:
-                        g_add = gsc2
+                        if stent[0][0] <= 0:
+                            g_add = gsc2
 
                     break
 
@@ -381,6 +389,7 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                         gsc = 0
                         gsc2 = 0
                         inlet = True
+                        inlet_g = stent[-1][0]
 
                     elif stent[-1][1] != 'inlet':
                         gsc = stent[-1][0]
@@ -393,7 +402,9 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
 
                     elif stent[-1][1] == 'inlet':
                         inlet = True
-                        g_add = gsc2
+                        inlet_g = stent[-1][0]
+                        if stent[-1][0] <= 0:
+                            g_add = gsc2
 
                     break
 
@@ -405,17 +416,18 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                         gsc = stent[-1][0]
 
                     else:
-                        g_add = gsc
+                        if stent[-1][0] <= 0:
+                            g_add = gsc
 
                     break
 
         for loc, g_ratio in ccs:
             if i == loc:
                 if inlet or spine or window:
-                    gcc += beta * g_ratio / (np.sum(ccs[:, 1]) * get_rcc(iop))
+                    gcc += beta * g_ratio / (len(ccs) * get_rcc(iop))
 
                 elif not ow_removed:
-                    gcc += g_ratio / (np.sum(ccs[:, 1]) * get_rcc(iop))
+                    gcc += g_ratio / (len(ccs) * get_rcc(iop))
 
                 break
 
@@ -423,10 +435,23 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                 gcc = 0
 
             if ow_removed:
-                gcc = 1 / (np.sum(ccs[:, 1]) * get_rcc(iop))
+                gcc = 1 / (len(ccs) * get_rcc(iop))
 
         if mode == 'constant flow':
-            if not tm_removed and not ow_removed and not spine and not inlet:
+            finite_inlet = inlet and inlet_g > 0
+            if finite_inlet:
+                g[i, -1] = inlet_g
+                g[-1, i] = -inlet_g - g_add
+                g[-1, -1] += inlet_g + g_add
+
+                if i == 0:
+                    g[0, -2] = gsc
+                    g[-2, 0] = gsc
+
+                elif i == N * M - 1:
+                    g[-2, 0] = 0
+
+            elif not tm_removed and not ow_removed and not spine and not inlet:
                 g[i, -1] = 1 / Rtm[i]
                 g[-1, i] = -1 / Rtm[i] - g_add
                 g[-1, -1] += 1 / Rtm[i] + g_add
@@ -484,7 +509,20 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
                 g[i, i] = 1.0
 
         for k in range(N * M):
-            if not tm_removed and not ow_removed and not spine and not inlet:
+            if inlet and inlet_g > 0:
+                if i == k:
+                    g[i, k] = -(inlet_g + gsc + gsc2 + gcc)
+
+                elif k == i + 1:
+                    g[i, k] = gsc2
+
+                elif k == i - 1:
+                    g[i, k] = gsc
+
+                elif k > i + 1:
+                    break
+
+            elif not tm_removed and not ow_removed and not spine and not inlet:
                 if i == k:
                     g[i, k] = -(1 / Rtm[i] + gsc + gsc2 + gcc)
 
@@ -569,9 +607,9 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
     stents : array_like of (int, Stent)
         Each element is of the form (start index, stent). Default is None for no stents.
     ccs : array_like of tuples (int, float), optional
-        Each element is of the form (index, relative conductance ratio), where 'index' is the location
-        of a collector channel and relative conductance ratio is the conductance ration relative to the
-        other collector channels. Default is [] for a uniform distribution of collector channels.
+        Each element is of the form (index, conductance multiplier), where 'index' is the location
+        of a collector channel and the multiplier scales only that collector channel relative to the
+        baseline per-channel conductance. Default is [] for a uniform distribution of collector channels.
     guess : array_like of float, optional
         An initial guess for the pressure distribution in Schlemm's canal to be used instead of
         guess_pressure(). If empty or not of length N * M, the guess_pressure() is used. Default is None.
@@ -720,7 +758,13 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
 
             if stents is not None:
                 for loc, stent in stents:
-                    q[np.where(stent[:][1] == 'inlet')[0] + loc] = iop - Pev
+                    for inlet_idx in np.where(stent[:][1] == 'inlet')[0]:
+                        node = (int(inlet_idx) + loc) % (N * M)
+                        inlet_g = float(stent[int(inlet_idx)][0])
+                        if inlet_g > 0:
+                            q[node] = -(iop - Pev) * inlet_g
+                        else:
+                            q[node] = iop - Pev
                     q[np.where(stent[:][1] == 'spine')[0] + loc] = 0.0
 
         elif mode == 'constant flow':

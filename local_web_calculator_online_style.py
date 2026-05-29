@@ -534,6 +534,7 @@ def build_html() -> str:
                 <input id="unconventional" type="checkbox" />
                 <span>Include unconventional outflow</span>
               </label>
+              <div class="hint">With Auto RTM enabled, Rtm is recalibrated to keep the baseline IOP target, so this option may change Rtm/resistance more than displayed IOP.</div>
 
               <div class="field">
                 <label id="iop_label">Baseline IOP (mmHg)</label>
@@ -637,6 +638,7 @@ def build_html() -> str:
           </div>
           <div class="field">
             <label class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP</span></label>
+            <div class="hint">Auto RTM can absorb the visible IOP effect of unconventional flow by fitting Rtm to the baseline IOP.</div>
           </div>
         </div>
 
@@ -648,7 +650,7 @@ def build_html() -> str:
             <div class="field"><label>Etm</label><input id="etm" type="number" step="0.1" value="13" /></div>
             <div class="field"><label>h0 (um)</label><input id="h0" type="number" step="0.1" value="20" /></div>
             <div class="field"><label>hs (um)</label><input id="hs" type="number" step="0.1" value="3.0" /></div>
-            <div class="field"><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto" /></div>
+            <div class="field"><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto (~1.5 at 15 mmHg)" /></div>
             <div class="field"><label>Qu</label><input id="qu" type="number" step="0.01" value="0.28" /></div>
             <div class="field"><label>max error</label><input id="max_error" type="number" step="0.00001" value="0.0001" /></div>
             <div class="field"><label>Stent beta</label><input id="beta" type="number" step="0.1" placeholder="1.0" /></div>
@@ -716,7 +718,7 @@ def build_html() -> str:
         <div class="field">
           <label>Manual CC distribution</label>
           <textarea id="ccs" placeholder="0:1, 40:1, 80:0.5, 120:2"></textarea>
-          <div class="hint">Format is node:relative conductance. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
+          <div class="hint">Format is node:per-channel conductance multiplier. A multiplier changes only that collector channel; leave blank for the uniform default from N and M.</div>
         </div>
       </div>
       <div class="dialog-actions">
@@ -821,6 +823,7 @@ def build_html() -> str:
 
         <div class="subsection">
           <h4>Stent editor</h4>
+          <div class="hint">iStent inject example: length 230 um, inlet offset 115 um, width 50 um, height 50 um, after height 150 um, inlet conductance 42.15, two-way checked, ellipse geometry.</div>
           <div class="grid2">
             <div class="field"><label>Name</label><input id="stent_name" type="text" value="Custom iStent" /></div>
             <div class="field"><label>Stent geometry</label>
@@ -834,10 +837,10 @@ def build_html() -> str:
           <div class="grid3">
             <div class="field"><label>Length (um)</label><input id="stent_length" type="number" step="10" value="1000" /></div>
             <div class="field"><label>Inlet offset (um)</label><input id="stent_loc_inlet" type="number" step="10" value="0" /></div>
-            <div class="field"><label>Inlet conductance</label><input id="stent_g_inlet" type="number" step="0.001" value="0" /></div>
             <div class="field"><label>Width (um)</label><input id="stent_width" type="number" step="1" value="120" /></div>
             <div class="field"><label>Height (um)</label><input id="stent_height" type="number" step="1" value="60" /></div>
             <div class="field"><label>After height (um)</label><input id="stent_h_after" type="number" step="1" placeholder="same as height" /></div>
+            <div class="field"><label>Inlet conductance</label><input id="stent_g_inlet" type="number" step="0.001" value="0" /></div>
             <div class="field"><label>Before dilation nodes</label><input id="stent_l_before" type="number" step="1" value="0" /></div>
             <div class="field"><label>After dilation nodes</label><input id="stent_l_after" type="number" step="1" value="0" /></div>
             <div class="field"><label class="checkline"><input id="stent_two_way" type="checkbox" checked /><span>Two-way inlet</span></label></div>
