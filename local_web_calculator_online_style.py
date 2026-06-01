@@ -20,20 +20,20 @@ def build_html() -> str:
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {
-      --bg: #f3f3f6;
-      --panel: #ffffff;
-      --ink: #1e1f25;
-      --muted: #666b77;
-      --line: #d7d9e1;
-      --purple: #552d89;
-      --purple-dark: #45216f;
-      --purple-soft: #ece4f8;
+      --bg: #0b0f19;
+      --panel: #151a27;
+      --ink: #f2f5ff;
+      --muted: #a6adbd;
+      --line: #30384d;
+      --purple: #7f5af0;
+      --purple-dark: #6543c7;
+      --purple-soft: #211b35;
       --danger: #d43f4d;
       --blue: #1d84e8;
       --trab: #ef3932;
       --canal: #b8b8b8;
       --tm-label: #121212;
-      --soft: #f8f8fb;
+      --soft: #111827;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -52,8 +52,8 @@ def build_html() -> str:
       min-height: 100vh;
     }
     .sidebar {
-      background: #fafafd;
-      border-right: 1px solid #d9d9df;
+      background: #101522;
+      border-right: 1px solid var(--line);
       display: flex;
       flex-direction: column;
     }
@@ -67,18 +67,47 @@ def build_html() -> str:
       font-size: 18px;
       font-weight: 700;
     }
+    .sidebar-import {
+      margin: 12px 12px 4px;
+      padding: 10px 12px;
+      border: 1px solid rgba(127,90,240,0.42);
+      border-radius: 5px;
+      background: var(--purple-soft);
+      color: #efe8ff;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: left;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .sidebar-import::after {
+      content: "+";
+      flex: 0 0 auto;
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--purple);
+      color: #fff;
+      font-size: 18px;
+      line-height: 1;
+    }
     .menu {
       padding: 10px 0;
     }
     .menu a {
       display: block;
       padding: 12px 16px;
-      color: #22242d;
+      color: var(--ink);
       text-decoration: none;
       font-size: 15px;
     }
     .menu a.active {
-      background: #dedee5;
+      background: #1d2433;
     }
     .work {
       min-width: 0;
@@ -99,16 +128,16 @@ def build_html() -> str:
       padding: 18px;
     }
     .sim-card {
-      border: 1px solid #d3d4db;
+      border: 1px solid var(--line);
       background: var(--panel);
-      box-shadow: 0 2px 8px rgba(33, 34, 41, 0.12);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
       min-height: 560px;
       display: grid;
       grid-template-columns: minmax(420px, 1fr) 540px;
     }
     .stage-pane {
       padding: 20px 22px 18px;
-      border-right: 1px solid #ececf2;
+      border-right: 1px solid var(--line);
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -119,7 +148,7 @@ def build_html() -> str:
       place-items: center;
       min-height: 380px;
       background:
-        radial-gradient(circle at 50% 36%, rgba(247,247,247,0.86), rgba(255,255,255,0.96));
+        radial-gradient(circle at 50% 36%, rgba(39,48,70,0.86), rgba(15,20,32,0.96));
     }
     .ring {
       width: min(100%, 520px);
@@ -131,7 +160,7 @@ def build_html() -> str:
     .solution-info {
       border: 1px solid var(--line);
       border-radius: 4px;
-      background: #fbfbfd;
+      background: #111827;
       padding: 10px 12px;
       font-size: 13px;
       line-height: 1.45;
@@ -160,26 +189,28 @@ def build_html() -> str:
     }
     .field label {
       font-size: 13px;
-      color: #757985;
+      color: var(--muted);
     }
     .field input,
     .field select,
     textarea {
       width: 100%;
       border: 0;
-      border-bottom: 1px solid #9fa3af;
+      border-bottom: 1px solid #586178;
       padding: 4px 0 6px;
       background: transparent;
+      color: var(--ink);
       outline: none;
       font-size: 15px;
     }
     textarea {
       min-height: 96px;
-      border: 1px solid #cfd3dd;
+      border: 1px solid var(--line);
       border-radius: 4px;
       padding: 8px 10px;
       resize: vertical;
-      background: white;
+      background: #0f1420;
+      color: var(--ink);
     }
     .checkline {
       display: flex;
@@ -248,7 +279,7 @@ def build_html() -> str:
     .icon-button {
       border: 0;
       background: transparent;
-      color: #111;
+      color: var(--ink);
       cursor: pointer;
       font-size: 36px;
       line-height: 0.9;
@@ -270,7 +301,7 @@ def build_html() -> str:
     .text-action {
       border: 0;
       background: transparent;
-      color: #6b6f7a;
+      color: var(--muted);
       cursor: pointer;
       padding: 0;
       font-size: 15px;
@@ -297,15 +328,15 @@ def build_html() -> str:
     }
     .status {
       min-height: 18px;
-      color: #95610f;
+      color: #f0b35b;
       font-size: 12px;
       line-height: 1.4;
     }
     .plot-card {
       margin-top: 18px;
-      border: 1px solid #d3d4db;
-      background: white;
-      box-shadow: 0 2px 8px rgba(33, 34, 41, 0.07);
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
       padding: 14px 16px 16px;
     }
     .plot-head {
@@ -322,10 +353,11 @@ def build_html() -> str:
     .plot-head select {
       width: 240px;
       max-width: 100%;
-      border: 1px solid #cfd3dd;
+      border: 1px solid var(--line);
       border-radius: 4px;
       padding: 8px 10px;
-      background: white;
+      background: #0f1420;
+      color: var(--ink);
     }
     #plot {
       width: 100%;
@@ -339,10 +371,12 @@ def build_html() -> str:
       border: 0;
       border-radius: 8px;
       padding: 0;
+      background: var(--panel);
+      color: var(--ink);
       box-shadow: 0 16px 52px rgba(20, 22, 33, 0.30);
     }
     dialog::backdrop {
-      background: rgba(18, 17, 26, 0.40);
+      background: rgba(4, 7, 13, 0.72);
     }
     .dialog-head {
       display: flex;
@@ -350,8 +384,8 @@ def build_html() -> str:
       justify-content: space-between;
       gap: 12px;
       padding: 16px 18px;
-      border-bottom: 1px solid #ececf2;
-      background: #fcfcfe;
+      border-bottom: 1px solid var(--line);
+      background: #111827;
     }
     .dialog-head h3 {
       margin: 0;
@@ -365,7 +399,7 @@ def build_html() -> str:
     .dialog-close {
       border: 0;
       background: transparent;
-      color: #414552;
+      color: var(--ink);
       cursor: pointer;
       font-size: 22px;
       line-height: 1;
@@ -389,7 +423,7 @@ def build_html() -> str:
       gap: 14px 18px;
     }
     .subsection {
-      border-top: 1px solid #ececf2;
+      border-top: 1px solid var(--line);
       padding-top: 12px;
     }
     .subsection h4 {
@@ -403,45 +437,46 @@ def build_html() -> str:
       padding: 0 18px 18px;
     }
     .secondary {
-      border: 1px solid #cfd3dd;
+      border: 1px solid var(--line);
       border-radius: 4px;
-      background: white;
+      background: #0f1420;
+      color: var(--ink);
       padding: 9px 14px;
       cursor: pointer;
     }
     .secondary:hover {
-      border-color: #a8adc0;
+      border-color: #7f5af0;
     }
     .stage-label {
       font-size: 12px;
-      fill: #535763;
+      fill: #c8cede;
     }
     .stage-title {
       font-size: 14px;
       font-weight: 700;
-      fill: #1e1f25;
+      fill: #f2f5ff;
     }
     .anatomy-label {
       font-size: 12px;
       font-weight: 700;
       letter-spacing: .04em;
-      fill: #3f4350;
+      fill: #e2e8ff;
       text-transform: uppercase;
     }
     .anatomy-label-side {
       font-size: 11px;
       font-weight: 700;
       letter-spacing: .04em;
-      fill: #3f4350;
+      fill: #e2e8ff;
       text-transform: uppercase;
     }
     .anatomy-divider {
-      stroke: rgba(83, 87, 99, 0.35);
+      stroke: rgba(226, 232, 255, 0.38);
       stroke-width: 1.4;
       stroke-dasharray: 4 4;
     }
     .anatomy-sector {
-      opacity: 0.42;
+      opacity: 0.58;
     }
     .hoverable {
       cursor: pointer;
@@ -485,6 +520,7 @@ def build_html() -> str:
     <div class="shell">
       <nav class="sidebar">
         <div class="sidebar-head">Menu</div>
+        <button type="button" class="sidebar-import" title="Placeholder only; import is not connected yet.">Import eye model file</button>
         <div class="menu">
           <a class="active" href="#/simulation">Simulation</a>
           <a href="#/instructions">Instructions</a>
@@ -1315,14 +1351,14 @@ def build_html() -> str:
       parts.push(`<rect x="0" y="0" width="520" height="520" fill="transparent"></rect>`);
       parts.push(drawTicks(cx, cy, 222));
       parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 20, ccRadius + 24, 520, { includeLabels: false, includeDividers: false }));
-      parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius}" fill="none" stroke="#c4c4c4" stroke-width="52"></circle>`);
-      parts.push(`<circle cx="${cx}" cy="${cy}" r="${tmRadius}" fill="none" stroke="#ef3932" stroke-width="28"></circle>`);
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius}" fill="none" stroke="#4b5568" stroke-width="52"></circle>`);
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${tmRadius}" fill="none" stroke="#be342f" stroke-width="28"></circle>`);
 
       model.ccs.forEach((cc) => {
         const angle = 360 * normalizeNode(cc.loc, model.totalNodes) / model.totalNodes;
         const inner = polarPoint(cx, cy, ccRadius - 28, angle);
         const outer = polarPoint(cx, cy, ccRadius + 32, angle);
-        parts.push(`<line x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="#1d84e8" stroke-width="3"></line>`);
+        parts.push(`<line x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="#6aaef7" stroke-width="3"></line>`);
       });
 
       if (model.scProfile) {
@@ -1331,7 +1367,7 @@ def build_html() -> str:
         model.scProfile.forEach((value, idx) => {
           const start = 360 * idx / model.scProfile.length;
           const span = 360 / model.scProfile.length - 0.9;
-          const color = mixColors("#d7d7d7", "#7f7f7f", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
+          const color = mixColors("#30384d", "#96a3b8", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
           parts.push(`<path d="${arcPath(cx, cy, canalRadius, start, span)}" stroke="${color}" stroke-width="50" fill="none" opacity="0.52"></path>`);
         });
       }
@@ -1341,7 +1377,7 @@ def build_html() -> str:
         const span = 360 / arr.length - 1;
         const minValue = Math.min(...arr);
         const maxValue = Math.max(...arr);
-        const color = mixColors("#ff8179", "#b90f0a", maxValue === minValue ? 0.45 : (value - minValue) / (maxValue - minValue));
+        const color = mixColors("#ff8179", "#be342f", maxValue === minValue ? 0.45 : (value - minValue) / (maxValue - minValue));
         parts.push(`<path d="${arcPath(cx, cy, tmRadius, start, span)}" stroke="${color}" stroke-width="28" fill="none" opacity="0.95"></path>`);
       });
 
@@ -1360,12 +1396,12 @@ def build_html() -> str:
       model.stents.forEach((stent) => {
         const start = 360 * normalizeNode(stent.loc, model.totalNodes) / model.totalNodes;
         const span = 360 * Math.max(1, stent.span_nodes || 1) / model.totalNodes;
-        parts.push(`<path d="${arcPath(cx, cy, canalRadius - 10, start, span)}" stroke="#2075b8" stroke-width="14" fill="none" stroke-linecap="round"></path>`);
+        parts.push(`<path d="${arcPath(cx, cy, canalRadius - 10, start, span)}" stroke="#4ea3ff" stroke-width="14" fill="none" stroke-linecap="round"></path>`);
       });
 
       model.yagHoles.forEach((node) => {
         const point = polarPoint(cx, cy, tmRadius - 20, 360 * normalizeNode(node, model.totalNodes) / model.totalNodes);
-        parts.push(`<circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="6" fill="white" stroke="#bf3f6d" stroke-width="3"></circle>`);
+        parts.push(`<circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="6" fill="#0f1420" stroke="#ff6fa7" stroke-width="3"></circle>`);
       });
 
       parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 20, ccRadius + 24, 520, { includeSectors: false }));
@@ -1434,7 +1470,7 @@ def build_html() -> str:
       const heightRadius = 124;
       const ccRadius = 192;
 
-      parts.push(`<defs><linearGradient id="pressureScale" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ef3932"></stop><stop offset="100%" stop-color="#1d84e8"></stop></linearGradient></defs>`);
+      parts.push(`<defs><linearGradient id="pressureScale" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ff6b5f"></stop><stop offset="100%" stop-color="#4ea3ff"></stop></linearGradient></defs>`);
       parts.push(`<rect x="0" y="0" width="620" height="520" fill="transparent"></rect>`);
       parts.push(`<rect x="28" y="62" width="20" height="280" rx="3" fill="url(#pressureScale)"></rect>`);
       parts.push(`<text x="58" y="72" class="stage-label">${fmt(pHigh)} mmHg</text>`);
@@ -1445,14 +1481,14 @@ def build_html() -> str:
       pressure.forEach((value, idx) => {
         const start = 360 * idx / totalNodes;
         const span = 360 / totalNodes + 0.12;
-        const color = mixColors("#1d84e8", "#ef3932", pHigh === pLow ? 0.5 : (value - pLow) / (pHigh - pLow));
+        const color = mixColors("#4ea3ff", "#ff6b5f", pHigh === pLow ? 0.5 : (value - pLow) / (pHigh - pLow));
         parts.push(`<path class="hoverable" data-kind="node" data-theta="${(360 * idx / totalNodes).toFixed(2)}" data-pressure="${value}" data-height="${heights[idx]}" d="${arcPath(cx, cy, pressureRadius, start, span)}" stroke="${color}" stroke-width="28" fill="none"></path>`);
       });
 
       heights.forEach((value, idx) => {
         const start = 360 * idx / totalNodes;
         const span = 360 / totalNodes + 0.12;
-        const color = mixColors("#efe7cd", "#147c72", hHigh === hLow ? 0.5 : (value - hLow) / (hHigh - hLow));
+        const color = mixColors("#30384d", "#6ee7d8", hHigh === hLow ? 0.5 : (value - hLow) / (hHigh - hLow));
         parts.push(`<path d="${arcPath(cx, cy, heightRadius, start, span)}" stroke="${color}" stroke-width="18" fill="none" opacity="0.96"></path>`);
       });
 
@@ -1460,7 +1496,7 @@ def build_html() -> str:
         const angle = 360 * normalizeNode(cc.loc, totalNodes) / totalNodes;
         const inner = polarPoint(cx, cy, ccRadius, angle);
         const outer = polarPoint(cx, cy, ccRadius + 10 + 24 * (jcc[idx] / maxFlow), angle);
-        const color = mixColors("#9bccfb", "#1d84e8", jcc[idx] / maxFlow);
+        const color = mixColors("#9bccfb", "#4ea3ff", jcc[idx] / maxFlow);
         parts.push(`<line class="hoverable" data-kind="cc" data-loc="${cc.loc}" data-flow="${jcc[idx]}" x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="${color}" stroke-width="4" stroke-linecap="round"></line>`);
       });
 
@@ -1511,17 +1547,17 @@ def build_html() -> str:
         mode: kind === "jcc" ? "lines+markers" : "lines",
         x: series.x,
         y: series.y,
-        line: { color: "#147c72", width: 2 },
-        marker: { color: "#147c72", size: 6 },
+        line: { color: "#6ee7d8", width: 2 },
+        marker: { color: "#6ee7d8", size: 6 },
       };
       const layout = {
         title,
-        paper_bgcolor: "#ffffff",
-        plot_bgcolor: "#ffffff",
-        font: { color: "#1e1f25" },
+        paper_bgcolor: "#151a27",
+        plot_bgcolor: "#0f1420",
+        font: { color: "#f2f5ff" },
         margin: { l: 70, r: 22, t: 56, b: kind === "jcc" ? 58 : 92 },
-        xaxis: { title: xTitle, gridcolor: "#e6ebe5" },
-        yaxis: { title: yTitle, gridcolor: "#e6ebe5", rangemode: "tozero" },
+        xaxis: { title: xTitle, gridcolor: "#2a3246", zerolinecolor: "#59637a", linecolor: "#59637a" },
+        yaxis: { title: yTitle, gridcolor: "#2a3246", zerolinecolor: "#59637a", linecolor: "#59637a", rangemode: "tozero" },
       };
       if (kind !== "jcc") {
         const axisGuide = anatomyAxisGuide(series);
@@ -1529,7 +1565,7 @@ def build_html() -> str:
           layout.xaxis.tickmode = "array";
           layout.xaxis.tickvals = axisGuide.tickvals;
           layout.xaxis.ticktext = axisGuide.ticktext;
-          layout.xaxis.tickfont = { size: 11, color: "#47524c" };
+          layout.xaxis.tickfont = { size: 11, color: "#c8cede" };
           layout.shapes = axisGuide.shapes;
         }
       }
