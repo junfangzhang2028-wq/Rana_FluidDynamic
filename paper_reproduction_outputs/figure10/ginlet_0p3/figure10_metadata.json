@@ -1,0 +1,31 @@
+{
+  "target_baseline_iop": 25.0,
+  "baseline_iop": 25.000000008452698,
+  "calibrated_rtm": 6.1593059450387955,
+  "qt": 2.0,
+  "pev": 8.0,
+  "stent_spacing_nodes": 300,
+  "stent_spacing_degrees": 90.0,
+  "start_nodes": [
+    50,
+    72,
+    94,
+    116,
+    138,
+    161,
+    183,
+    205,
+    227,
+    250
+  ],
+  "stent_parameters": {
+    "length_um": 230.0,
+    "inlet_location_um": 115.0,
+    "height_um": 50.0,
+    "width_um": 50.0,
+    "post_stent_canal_height_um": 150.0,
+    "ginlet": 0.3,
+    "bidirectional": true,
+    "channel_geometry": "ellipse"
+  }
+}
