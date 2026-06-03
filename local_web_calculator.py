@@ -145,7 +145,7 @@ def parse_ccs(text, max_nodes=None):
         if max_nodes is not None and loc >= max_nodes:
             raise ValueError(f"Collector channel node {loc} is outside the current 0-{max_nodes - 1} node range.")
         if ratio <= 0:
-            raise ValueError("Collector channel conductance ratios must be greater than zero.")
+            raise ValueError("Collector channel conductance multipliers must be greater than zero.")
         ccs.append((loc, ratio))
 
     if not ccs:
@@ -727,16 +727,16 @@ def build_html() -> str:
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root {
-      --bg: #f4f7f2;
-      --panel: #ffffff;
-      --ink: #1e2521;
-      --muted: #647067;
-      --line: #d8dfd7;
-      --accent: #147c72;
-      --accent-dark: #0b5f58;
-      --warn: #8a4b12;
-      --soft-green: #dcece8;
-      --soft-orange: #f1dfcf;
+      --bg: #071311;
+      --panel: #111d1a;
+      --ink: #ecf6f1;
+      --muted: #9eb0a8;
+      --line: #29423a;
+      --accent: #32b8a3;
+      --accent-dark: #238675;
+      --warn: #f0b35b;
+      --soft-green: #18352f;
+      --soft-orange: #3a2c1f;
       --tm-low: #f1dece;
       --tm-high: #9a4f18;
       --sc-low: #eff5ea;
@@ -753,7 +753,8 @@ def build_html() -> str:
       font-family: "Segoe UI", "Aptos", sans-serif;
       color: var(--ink);
       background:
-        linear-gradient(135deg, rgba(20,124,114,0.10), rgba(136,164,92,0.10)),
+        radial-gradient(circle at 18% 12%, rgba(50,184,163,0.22), transparent 32%),
+        linear-gradient(135deg, rgba(14,42,36,0.98), rgba(7,14,18,0.98)),
         var(--bg);
     }
     .app {
@@ -764,7 +765,7 @@ def build_html() -> str:
     aside {
       padding: 16px 16px 14px;
       border-right: 1px solid var(--line);
-      background: rgba(255,255,255,0.84);
+      background: rgba(10,24,21,0.92);
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -779,7 +780,7 @@ def build_html() -> str:
       flex: 0 0 auto;
       padding-top: 10px;
       border-top: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.82) 28%, rgba(255,255,255,0.96));
+      background: linear-gradient(180deg, rgba(10,24,21,0), rgba(10,24,21,0.86) 28%, rgba(10,24,21,0.96));
     }
     main {
       display: grid;
@@ -807,6 +808,36 @@ def build_html() -> str:
       font-size: 22px;
       font-weight: 700;
     }
+    .import-model-button {
+      width: 100%;
+      margin: 2px 0 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(50,184,163,0.38);
+      border-radius: 10px;
+      background: rgba(50,184,163,0.12);
+      color: #d9fff6;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: left;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .import-model-button::after {
+      content: "+";
+      flex: 0 0 auto;
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 18px;
+      line-height: 1;
+    }
     .sub {
       margin: 0 0 18px;
       color: var(--muted);
@@ -817,7 +848,7 @@ def build_html() -> str:
       margin-bottom: 10px;
       border: 1px solid var(--line);
       border-radius: 10px;
-      background: rgba(255,255,255,0.76);
+      background: rgba(17,29,26,0.86);
       overflow: hidden;
       box-shadow: 0 6px 16px rgba(23, 44, 36, 0.03);
     }
@@ -830,7 +861,7 @@ def build_html() -> str:
       cursor: pointer;
       padding: 12px 14px;
       user-select: none;
-      background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(247,250,246,0.88));
+      background: linear-gradient(180deg, rgba(24,45,39,0.96), rgba(17,29,26,0.92));
     }
     .panel summary::-webkit-details-marker {
       display: none;
@@ -881,7 +912,7 @@ def build_html() -> str:
       border-radius: 6px;
       padding: 0 10px;
       color: var(--ink);
-      background: white;
+      background: #0b1715;
       font-size: 14px;
     }
     textarea {
@@ -891,7 +922,7 @@ def build_html() -> str:
       border-radius: 6px;
       padding: 8px 10px;
       color: var(--ink);
-      background: white;
+      background: #0b1715;
       font: 14px "Segoe UI", "Aptos", sans-serif;
       resize: vertical;
     }
@@ -942,20 +973,20 @@ def build_html() -> str:
     .subtle-divider {
       height: 1px;
       margin: 12px 0 6px;
-      background: linear-gradient(90deg, rgba(216,223,215,0.18), rgba(216,223,215,0.85), rgba(216,223,215,0.18));
+      background: linear-gradient(90deg, rgba(41,66,58,0.18), rgba(72,112,100,0.85), rgba(41,66,58,0.18));
     }
     .card {
       border: 1px solid var(--line);
       border-radius: 10px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,251,247,0.96));
+        linear-gradient(180deg, rgba(17,29,26,0.98), rgba(11,23,21,0.98));
       overflow: hidden;
-      box-shadow: 0 10px 28px rgba(23, 44, 36, 0.04);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
     }
     .card-head {
       padding: 14px 16px 10px;
-      border-bottom: 1px solid rgba(216,223,215,0.8);
-      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(244,247,242,0.78));
+      border-bottom: 1px solid rgba(41,66,58,0.9);
+      background: linear-gradient(180deg, rgba(21,40,35,0.96), rgba(14,28,25,0.86));
     }
     .card-head h3 {
       margin: 0;
@@ -983,7 +1014,7 @@ def build_html() -> str:
       padding: 10px 12px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: rgba(255,255,255,0.76);
+      background: rgba(9,20,18,0.74);
       font-size: 13px;
       line-height: 1.45;
     }
@@ -1036,7 +1067,7 @@ def build_html() -> str:
       padding: 12px 14px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: rgba(255,255,255,0.88);
+      background: rgba(17,29,26,0.9);
     }
     .metric span {
       display: block;
@@ -1081,23 +1112,23 @@ def build_html() -> str:
       font-size: 10px;
       font-weight: 700;
       letter-spacing: .03em;
-      fill: #47524c;
+      fill: #d7e7df;
       text-transform: uppercase;
     }
     .anatomy-label-side {
       font-size: 9.5px;
       font-weight: 700;
       letter-spacing: .03em;
-      fill: #47524c;
+      fill: #d7e7df;
       text-transform: uppercase;
     }
     .anatomy-divider {
-      stroke: rgba(71, 82, 76, 0.34);
+      stroke: rgba(215, 231, 223, 0.36);
       stroke-width: 1.4;
       stroke-dasharray: 4 4;
     }
     .anatomy-sector {
-      opacity: 0.48;
+      opacity: 0.62;
     }
     .hoverable {
       cursor: pointer;
@@ -1121,6 +1152,7 @@ def build_html() -> str:
     <aside>
       <div class="aside-scroll">
         <h1>Aqueous Outflow Model</h1>
+        <button type="button" class="import-model-button" title="Placeholder only; import is not connected yet.">Import eye model file</button>
         <p class="sub">Pure local calculator. The browser talks to this Python server, and the server calls the local solver.</p>
 
         <details class="panel" id="panel_solver" open>
@@ -1166,7 +1198,7 @@ def build_html() -> str:
               <div><label>Rtm</label><input id="rtm" type="number" step="0.1" placeholder="default" /></div>
             </div>
             <div class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP</span></div>
-            <div class="hint">Matches the online calculator idea: infer Rtm from a baseline eye with no surgeries and default CC distribution.</div>
+            <div class="hint">Matches the online calculator idea: infer Rtm from a baseline eye with no surgeries and default CC distribution. If unconventional flow is enabled, Auto RTM recalibrates Rtm to keep the same baseline IOP.</div>
           </div>
         </details>
 
@@ -1238,7 +1270,7 @@ def build_html() -> str:
             </div>
             <div class="grid2">
               <div><label>hs (um)</label><input id="hs" type="number" step="0.1" value="3.0" /></div>
-              <div><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto" /></div>
+              <div><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto (~1.5 at 15 mmHg)" /></div>
             </div>
             <div class="grid2">
               <div><label>Qu</label><input id="qu" type="number" step="0.01" value="0.28" /></div>
@@ -1305,8 +1337,8 @@ def build_html() -> str:
           <div class="section-body">
             <label>Manual CC distribution</label>
             <textarea id="ccs" placeholder="Example: 0:1, 40:1, 80:0.5, 120:2"></textarea>
-            <div class="hint">Format is node:relative conductance. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
-            <div class="hint">If only a node is provided, ratio defaults to 1; for example 0, 40, 80.</div>
+            <div class="hint">Format is node:per-channel conductance multiplier. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
+            <div class="hint">A multiplier changes only that collector channel; if only a node is provided, the multiplier defaults to 1.</div>
           </div>
         </details>
 
@@ -1318,7 +1350,8 @@ def build_html() -> str:
             </div>
             <span class="panel-toggle">Advanced</span>
           </summary>
-          <div class="section-body">
+            <div class="section-body">
+            <div class="hint">iStent inject example: length 230 um, inlet offset 115 um, width 50 um, height 50 um, after height 150 um, inlet conductance 42.15, two-way checked, ellipse geometry.</div>
             <label>Name</label>
             <input id="stent_name" type="text" value="Custom iStent" />
             <div class="grid2">
@@ -1900,11 +1933,11 @@ def build_html() -> str:
       const tmRadius = 98;
       const parts = [];
 
-      parts.push(`<rect x="0" y="0" width="420" height="420" rx="22" fill="rgba(245,248,244,0.96)"></rect>`);
+      parts.push(`<rect x="0" y="0" width="420" height="420" rx="22" fill="rgba(8,19,17,0.96)"></rect>`);
       parts.push(drawTicks(cx, cy, 184));
-      parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius}" fill="none" stroke="rgba(20,124,114,0.08)" stroke-width="16"></circle>`);
-      parts.push(`<circle cx="${cx}" cy="${cy}" r="${scRadius}" fill="none" stroke="rgba(20,124,114,0.12)" stroke-width="22"></circle>`);
-      parts.push(`<circle cx="${cx}" cy="${cy}" r="${tmRadius}" fill="none" stroke="rgba(154,79,24,0.10)" stroke-width="18"></circle>`);
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${ccRadius}" fill="none" stroke="rgba(110,231,216,0.16)" stroke-width="16"></circle>`);
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${scRadius}" fill="none" stroke="rgba(50,184,163,0.24)" stroke-width="22"></circle>`);
+      parts.push(`<circle cx="${cx}" cy="${cy}" r="${tmRadius}" fill="none" stroke="rgba(240,179,91,0.16)" stroke-width="18"></circle>`);
       parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 8, ccRadius + 4, 420));
 
       if (model.scProfile) {
@@ -1913,7 +1946,7 @@ def build_html() -> str:
         model.scProfile.forEach((value, idx) => {
           const start = 360 * idx / model.scProfile.length;
           const span = 360 / model.scProfile.length - 0.9;
-          const color = mixColors("#eff5ea", "#147c72", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
+          const color = mixColors("#16342f", "#32b8a3", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
           parts.push(`<path d="${arcPath(cx, cy, scRadius, start, span)}" stroke="${color}" stroke-width="22" fill="none" opacity="0.95"></path>`);
         });
       }
@@ -1924,7 +1957,7 @@ def build_html() -> str:
         model.tmProfile.forEach((value, idx) => {
           const start = 360 * idx / model.tmProfile.length;
           const span = 360 / model.tmProfile.length - 1.2;
-          const color = mixColors("#f1dece", "#9a4f18", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
+          const color = mixColors("#3a2c1f", "#f0b35b", maxValue === minValue ? 0.5 : (value - minValue) / (maxValue - minValue));
           parts.push(`<path d="${arcPath(cx, cy, tmRadius, start, span)}" stroke="${color}" stroke-width="18" fill="none" opacity="0.96"></path>`);
         });
       }
@@ -1955,12 +1988,12 @@ def build_html() -> str:
         parts.push(`<path d="${arcPath(cx, cy, scRadius - 2, start, span)}" stroke="#2075b8" stroke-width="10" stroke-linecap="round" fill="none"></path>`);
         const inletNode = normalizeNode(stent.loc + (stent.inlet_index || 0), model.totalNodes);
         const inlet = polarPoint(cx, cy, scRadius - 2, 360 * inletNode / model.totalNodes);
-        parts.push(`<circle cx="${inlet.x.toFixed(2)}" cy="${inlet.y.toFixed(2)}" r="4.5" fill="white" stroke="#2075b8" stroke-width="2"></circle>`);
+        parts.push(`<circle cx="${inlet.x.toFixed(2)}" cy="${inlet.y.toFixed(2)}" r="4.5" fill="#0b1715" stroke="#4ea3ff" stroke-width="2"></circle>`);
       });
 
       model.yagHoles.forEach((node) => {
         const point = polarPoint(cx, cy, tmRadius + 18, 360 * normalizeNode(node, model.totalNodes) / model.totalNodes);
-        parts.push(`<circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="5.5" fill="white" stroke="#bf3f6d" stroke-width="3"></circle>`);
+        parts.push(`<circle cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="5.5" fill="#0b1715" stroke="#ff6fa7" stroke-width="3"></circle>`);
       });
 
       model.ccs.forEach((cc) => {
@@ -1968,7 +2001,7 @@ def build_html() -> str:
         const inner = polarPoint(cx, cy, ccRadius - 3, angle);
         const outer = polarPoint(cx, cy, ccRadius + 22, angle);
         const width = clamp(1.2 + (Number(cc.ratio) || 1) * 0.8, 1.4, 6.5);
-        parts.push(`<line x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="#1f6fb4" stroke-width="${width.toFixed(2)}" opacity="0.86"></line>`);
+        parts.push(`<line x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="#4ea3ff" stroke-width="${width.toFixed(2)}" opacity="0.9"></line>`);
       });
 
       parts.push(`<text x="${cx}" y="${cy - 10}" text-anchor="middle" class="ring-title">Anterior Chamber</text>`);
@@ -2099,7 +2132,7 @@ def build_html() -> str:
       const svg = $("solution_svg");
       const note = $("solution_note");
       if (!result) {
-        svg.innerHTML = `<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(245,248,244,0.96)"></rect><text x="260" y="208" text-anchor="middle" class="ring-title">No solution yet</text><text x="260" y="232" text-anchor="middle" class="ring-label">Run Solve locally to render the pressure and flow map.</text>`;
+        svg.innerHTML = `<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(8,19,17,0.96)"></rect><text x="260" y="208" text-anchor="middle" class="ring-title">No solution yet</text><text x="260" y="232" text-anchor="middle" class="ring-label">Run Solve locally to render the pressure and flow map.</text>`;
         $("solution_info").textContent = "Hover the pressure ring or a collector channel to inspect local values.";
         note.textContent = "Waiting for the first solve.";
         return;
@@ -2124,8 +2157,8 @@ def build_html() -> str:
       const heightRadius = 92;
       const ccRadius = 142;
 
-      parts.push(`<defs><linearGradient id="pressureScale" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#e04b3f"></stop><stop offset="100%" stop-color="#1f6fb4"></stop></linearGradient></defs>`);
-      parts.push(`<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(245,248,244,0.96)"></rect>`);
+      parts.push(`<defs><linearGradient id="pressureScale" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ff6b5f"></stop><stop offset="100%" stop-color="#4ea3ff"></stop></linearGradient></defs>`);
+      parts.push(`<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(8,19,17,0.96)"></rect>`);
       parts.push(`<rect x="18" y="44" width="18" height="248" rx="4" fill="url(#pressureScale)"></rect>`);
       parts.push(`<text x="48" y="54" class="ring-label">${fmt(pHigh)} mmHg</text>`);
       parts.push(`<text x="48" y="292" class="ring-label">${fmt(pLow)} mmHg</text>`);
@@ -2136,14 +2169,14 @@ def build_html() -> str:
       pressure.forEach((value, idx) => {
         const start = 360 * idx / totalNodes;
         const span = 360 / totalNodes + 0.12;
-        const color = mixColors("#1f6fb4", "#e04b3f", pHigh === pLow ? 0.5 : (value - pLow) / (pHigh - pLow));
+        const color = mixColors("#4ea3ff", "#ff6b5f", pHigh === pLow ? 0.5 : (value - pLow) / (pHigh - pLow));
         parts.push(`<path class="hoverable" data-kind="node" data-theta="${(360 * idx / totalNodes).toFixed(2)}" data-pressure="${value}" data-height="${heights[idx]}" d="${arcPath(cx, cy, pressureRadius, start, span)}" stroke="${color}" stroke-width="20" fill="none"></path>`);
       });
 
       heights.forEach((value, idx) => {
         const start = 360 * idx / totalNodes;
         const span = 360 / totalNodes + 0.12;
-        const color = mixColors("#f0e5b9", "#147c72", hHigh === hLow ? 0.5 : (value - hLow) / (hHigh - hLow));
+        const color = mixColors("#3a2c1f", "#32b8a3", hHigh === hLow ? 0.5 : (value - hLow) / (hHigh - hLow));
         parts.push(`<path d="${arcPath(cx, cy, heightRadius, start, span)}" stroke="${color}" stroke-width="16" fill="none" opacity="0.96"></path>`);
       });
 
@@ -2151,7 +2184,7 @@ def build_html() -> str:
         const angle = 360 * normalizeNode(cc.loc, totalNodes) / totalNodes;
         const inner = polarPoint(cx, cy, ccRadius, angle);
         const outer = polarPoint(cx, cy, ccRadius + 10 + 22 * (jcc[idx] / maxFlow), angle);
-        const color = mixColors("#a7d1f2", "#1f6fb4", jcc[idx] / maxFlow);
+        const color = mixColors("#86c9ff", "#4ea3ff", jcc[idx] / maxFlow);
         parts.push(`<line class="hoverable" data-kind="cc" data-loc="${cc.loc}" data-flow="${jcc[idx]}" x1="${inner.x.toFixed(2)}" y1="${inner.y.toFixed(2)}" x2="${outer.x.toFixed(2)}" y2="${outer.y.toFixed(2)}" stroke="${color}" stroke-width="4" stroke-linecap="round"></line>`);
       });
 
@@ -2201,17 +2234,17 @@ def build_html() -> str:
         mode: kind === "jcc" ? "lines+markers" : "lines",
         x: series.x,
         y: series.y,
-        line: { color: "#147c72", width: 2 },
-        marker: { color: "#147c72", size: 6 },
+        line: { color: "#32b8a3", width: 2 },
+        marker: { color: "#32b8a3", size: 6 },
       };
       const layout = {
         title,
-        paper_bgcolor: "#ffffff",
-        plot_bgcolor: "#ffffff",
-        font: { color: "#1e2521" },
+        paper_bgcolor: "#111d1a",
+        plot_bgcolor: "#0b1715",
+        font: { color: "#ecf6f1" },
         margin: { l: 70, r: 24, t: 56, b: kind === "jcc" ? 58 : 92 },
-        xaxis: { title: xTitle, gridcolor: "#e6ebe5" },
-        yaxis: { title: yTitle, gridcolor: "#e6ebe5", rangemode: "tozero" },
+        xaxis: { title: xTitle, gridcolor: "#263f38", zerolinecolor: "#42685d", linecolor: "#42685d" },
+        yaxis: { title: yTitle, gridcolor: "#263f38", zerolinecolor: "#42685d", linecolor: "#42685d", rangemode: "tozero" },
       };
       if (kind !== "jcc") {
         const axisGuide = anatomyAxisGuide(series);
@@ -2219,7 +2252,7 @@ def build_html() -> str:
           layout.xaxis.tickmode = "array";
           layout.xaxis.tickvals = axisGuide.tickvals;
           layout.xaxis.ticktext = axisGuide.ticktext;
-          layout.xaxis.tickfont = { size: 11, color: "#47524c" };
+          layout.xaxis.tickfont = { size: 11, color: "#b9cbc4" };
           layout.shapes = axisGuide.shapes;
         }
       }

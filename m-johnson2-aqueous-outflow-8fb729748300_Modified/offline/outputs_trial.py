@@ -101,9 +101,9 @@ def solve_cp(iop, geometry='ellipse', unconventional=False, variable_rtm=False, 
     stents : array_like of (int, Stent)
         Each element is of the form (start index, stent). Default is None for no stents.
     ccs : array_like of tuples (int, float), optional
-        Each element is of the form (index, relative conductance ratio), where 'index' is the location
-        of a collector channel and relative conductance ratio is the conductance ration relative to the
-        other collector channels. Default is [] for a uniform distribution of collector channels.
+        Each element is of the form (index, conductance multiplier), where 'index' is the location
+        of a collector channel and the multiplier scales only that collector channel relative to the
+        baseline per-channel conductance. Default is [] for a uniform distribution of collector channels.
     guess : array_like of float, optional
         An initial guess for the pressure distribution in Schlemm's canal to be used instead of
         guess_pressure(). If empty or not of length N * M, the guess_pressure() is used. Default is [].
@@ -195,10 +195,10 @@ def solve_cp(iop, geometry='ellipse', unconventional=False, variable_rtm=False, 
     for loc, g_ratio in ccs:
         # Add to this if statement for each boolean vector
         if not has_stent[int(loc)] and not no_ow[int(loc)]:
-            cc_flow[i] = (pressure[int(loc)] - Pev) * g_ratio / (np.sum(ccs[:, 1]) * md.get_rcc(iop))
+            cc_flow[i] = (pressure[int(loc)] - Pev) * g_ratio / (len(ccs) * md.get_rcc(iop))
             qt += cc_flow[i]
         elif not no_ow[int(loc)]:
-            cc_flow[i] = beta * (pressure[int(loc)] - Pev) * g_ratio / (np.sum(ccs[:, 1]) * md.get_rcc(iop))
+            cc_flow[i] = beta * (pressure[int(loc)] - Pev) * g_ratio / (len(ccs) * md.get_rcc(iop))
             qt += cc_flow[i]
 
         i += 1
@@ -272,9 +272,9 @@ def solve_cf(qt, geometry='ellipse', unconventional=False, variable_rtm=False, v
     stents : array_like of (int, Stent)
         Each element is of the form (start index, stent). Default is None for no stents.
     ccs : array_like of tuples (int, float), optional
-        Each element is of the form (index, relative conductance ratio), where 'index' is the location
-        of a collector channel and relative conductance ratio is the conductance ration relative to the
-        other collector channels. Default is [] for a uniform distribution of collector channels.
+        Each element is of the form (index, conductance multiplier), where 'index' is the location
+        of a collector channel and the multiplier scales only that collector channel relative to the
+        baseline per-channel conductance. Default is [] for a uniform distribution of collector channels.
     guess : array_like of float, optional
         An initial guess for the pressure distribution in Schlemm's canal to be used instead of
         guess_pressure(). If empty or not of length N * M, the guess_pressure() is used. Default is [].
@@ -355,9 +355,9 @@ def solve_cf(qt, geometry='ellipse', unconventional=False, variable_rtm=False, v
     i = 0
     for loc, g_ratio in ccs:
         if not has_stent[int(loc)] and not no_ow[int(loc)]:
-            cc_flow[i] = (pressure[int(loc)] - Pev) * g_ratio / (np.sum(ccs[:, 1]) * md.get_rcc(iop))
+            cc_flow[i] = (pressure[int(loc)] - Pev) * g_ratio / (len(ccs) * md.get_rcc(iop))
         elif not no_ow[int(loc)]:
-            cc_flow[i] = beta * (pressure[int(loc)] - Pev) * g_ratio / (np.sum(ccs[:, 1]) * md.get_rcc(iop))
+            cc_flow[i] = beta * (pressure[int(loc)] - Pev) * g_ratio / (len(ccs) * md.get_rcc(iop))
 
         i += 1
 
@@ -956,9 +956,9 @@ def solve_nonuniform_cc(iop=7.0, qt=2.0, ccs=None, dist='A', mode='constant pres
     qt : float, optional
         Total flowrate through the system. Only used if mode = 'constant flow'. Default is 2.0 (ul/min).
     ccs : array_like of tuples (int, float), optional
-        Each element is of the form (index, relative conductance ratio), where 'index' is the location
-        of a collector channel and relative conductance ratio is the conductance ration relative to the
-        other collector channels. Overrides dist if not None.
+        Each element is of the form (index, conductance multiplier), where 'index' is the location
+        of a collector channel and the multiplier scales only that collector channel relative to the
+        baseline per-channel conductance. Overrides dist if not None.
     dist : {'A', 'B', 'uniform'}, optional
 
         * 'A'       : 5 large CCs with conductance ratios of 10 distributed evenly between 25 small CCs
