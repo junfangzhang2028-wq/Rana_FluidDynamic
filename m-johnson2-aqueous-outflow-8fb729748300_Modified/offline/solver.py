@@ -1,5 +1,7 @@
 # Imports
 import numpy as np
+from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import spsolve
 from offline import gauss_seidel as gs
 import matplotlib.pyplot as plt
 from colorama import Fore, Style
@@ -508,55 +510,40 @@ def get_g(p, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, sten
             elif ow_removed:
                 g[i, i] = 1.0
 
-        for k in range(N * M):
-            if inlet and inlet_g > 0:
-                if i == k:
-                    g[i, k] = -(inlet_g + gsc + gsc2 + gcc)
+        # Each row has at most three SC entries.  Assign them directly instead
+        # of scanning all 1200 columns; this preserves the original matrix but
+        # makes Figure 13 placement sweeps practical.
+        node_count = N * M
+        if inlet and inlet_g > 0:
+            g[i, i] = -(inlet_g + gsc + gsc2 + gcc)
+            if i > 0:
+                g[i, i - 1] = gsc
+            if i + 1 < node_count:
+                g[i, i + 1] = gsc2
 
-                elif k == i + 1:
-                    g[i, k] = gsc2
-
-                elif k == i - 1:
-                    g[i, k] = gsc
-
-                elif k > i + 1:
-                    break
-
-            elif not tm_removed and not ow_removed and not spine and not inlet:
-                if i == k:
-                    g[i, k] = -(1 / Rtm[i] + gsc + gsc2 + gcc)
-
-                elif k == i + 1:
-                    g[i, k] = gsc2
-
-                elif k == i - 1:
-                    g[i, k] = gsc
-
-                elif k > i + 1:
-                    break
-
-            elif spine:
-                if i == k:
-                    g[i, k] = -(gsc + gsc2 + gcc)
-
-                elif k == i + 1:
-                    g[i, k] = gsc2
-
-                elif k == i - 1:
-                    g[i, k] = gsc
-
-                elif k > i + 1:
-                    break
-
-            elif inlet:
-                if i == k:
-                    g[i, k] = 1.0
-
-                elif k > i + 1:
-                    break
-
+        elif not tm_removed and not ow_removed and not spine and not inlet:
+            # A laser-damage simulation may deliberately disconnect an SC
+            # node from TM, CC, and both neighboring SC segments.  Such a node
+            # has no hydraulic influence, but its all-zero matrix row would
+            # make the linear system singular.  Pin its arbitrary pressure.
+            if np.isinf(Rtm[i]) and gsc == 0 and gsc2 == 0 and gcc == 0:
+                g[i, i] = -1.0
             else:
-                break
+                g[i, i] = -(1 / Rtm[i] + gsc + gsc2 + gcc)
+                if i > 0:
+                    g[i, i - 1] = gsc
+                if i + 1 < node_count:
+                    g[i, i + 1] = gsc2
+
+        elif spine:
+            g[i, i] = -(gsc + gsc2 + gcc)
+            if i > 0:
+                g[i, i - 1] = gsc
+            if i + 1 < node_count:
+                g[i, i + 1] = gsc2
+
+        elif inlet:
+            g[i, i] = 1.0
 
     return g
 
@@ -789,7 +776,10 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
             g = get_g(pressure, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, stents, ccs)
 
             if j <= 30:
-                new_pressure = np.linalg.solve(g, q)
+                # The hydraulic matrix is cyclic tridiagonal with one IOP
+                # row/column, so a sparse solve is mathematically equivalent
+                # and much faster than treating the 1201x1201 matrix as dense.
+                new_pressure = spsolve(csr_matrix(g), q)
 
             else:
                 # If the model fails to converge after 30 iterations of numpy's general solver (Intel LAPACK ?gesv
