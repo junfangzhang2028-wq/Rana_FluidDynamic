@@ -53,6 +53,20 @@ aq-ui-dist/
 **/node_modules/
 **/venv/
 
+# Local Codex working files and portable runtimes
+.codex-ppt-work/
+.codex-runtime/
+.codex-node*.zip
+
+# Local package-manager caches and preview-only lockfiles
+.pnpm-store/
+m-johnson2-aqueous-outflow-8fb729748300_Original/frontend/pnpm-lock.yaml
+m-johnson2-aqueous-outflow-8fb729748300_Modified/frontend/pnpm-lock.yaml
+
+# Presentation rendering and inspection artifacts
+PPT_Full_Images/
+*.pptx.inspect.ndjson
+
 # Environment files
 .env
 .env.*
