@@ -54,6 +54,9 @@ aq-ui-dist/
 **/node_modules/
 **/venv/
 
+# Simulation outputs (keep solver and reproduction scripts, not generated data/figures)
+paper_reproduction_outputs/
+
 # Local Codex working files and portable runtimes
 .codex-ppt-work/
 .codex-runtime/
