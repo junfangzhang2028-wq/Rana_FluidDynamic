@@ -145,3 +145,45 @@ If you are using this repository as the main development base, prefer working fr
 `m-johnson2-aqueous-outflow-8fb729748300_Modified/`
 
 Use the original snapshot as a historical baseline for comparison.
+
+## Deploying the Local Web Calculator
+
+The root-level `local_web_calculator.py` can run locally or as a public
+container service. When the `PORT` environment variable is present, it binds
+to `0.0.0.0`, uses that port, and does not try to open a desktop browser. The
+service also exposes `GET /healthz` for deployment health checks.
+
+### Local deployment-mode check
+
+```powershell
+$env:PORT="8080"
+python local_web_calculator.py
+```
+
+Then open `http://127.0.0.1:8080/` and verify that
+`http://127.0.0.1:8080/healthz` returns `{"status":"ok"}`.
+
+### Container build
+
+```bash
+docker build -t aqueous-outflow-calculator .
+docker run --rm -p 8080:8080 aqueous-outflow-calculator
+```
+
+### Google Cloud Run
+
+After selecting a Google Cloud project and enabling billing, deploy from the
+repository root:
+
+```bash
+gcloud run deploy aqueous-outflow-calculator \
+  --source . \
+  --region us-central1 \
+  --allow-unauthenticated
+```
+
+Cloud Run prints a public HTTPS service URL after deployment. That URL can be
+added to Google Sites as a full-page embed or navigation link. Deployment is
+intentionally not automated by this repository because it requires choosing
+the owning Google Cloud project, billing account, region, and public-access
+policy.

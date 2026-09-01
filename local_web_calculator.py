@@ -2360,7 +2360,7 @@ def guess_lan_ips() -> list[str]:
     return ips
 
 
-def serve(host: str = "127.0.0.1", port: int = 0) -> int:
+def serve(host: str = "127.0.0.1", port: int = 0, open_browser: bool = True) -> int:
     html = build_html().encode("utf-8")
 
     class Handler(BaseHTTPRequestHandler):
@@ -2372,6 +2372,14 @@ def serve(host: str = "127.0.0.1", port: int = 0) -> int:
                 self.send_header("Content-Length", str(len(html)))
                 self.end_headers()
                 self.wfile.write(html)
+                return
+            if parsed.path == "/healthz":
+                body = b'{"status":"ok"}'
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
                 return
             if parsed.path == "/favicon.ico":
                 self.send_response(HTTPStatus.NO_CONTENT)
@@ -2413,7 +2421,8 @@ def serve(host: str = "127.0.0.1", port: int = 0) -> int:
             print(f"LAN URL: http://{ip}:{server.server_port}/")
     print("Local calculator running. Press Ctrl+C to stop.")
 
-    threading.Timer(0.4, lambda: webbrowser.open(local_url, new=1)).start()
+    if open_browser:
+        threading.Timer(0.4, lambda: webbrowser.open(local_url, new=1)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
@@ -2424,14 +2433,16 @@ def serve(host: str = "127.0.0.1", port: int = 0) -> int:
 
 
 def main() -> int:
-    host = "127.0.0.1"
-    port = 0
-    if "--share" in sys.argv:
-        host = "0.0.0.0"
-    for arg in sys.argv[1:]:
-        if arg.isdigit():
-            port = int(arg)
-    return serve(host=host, port=port)
+    cloud_port = os.environ.get("PORT")
+    host = "0.0.0.0" if cloud_port or "--share" in sys.argv else "127.0.0.1"
+    port = int(cloud_port) if cloud_port else 0
+    if not cloud_port:
+        for arg in sys.argv[1:]:
+            if arg.isdigit():
+                port = int(arg)
+
+    open_browser = not cloud_port and not finite_bool(os.environ.get("NO_BROWSER"), False)
+    return serve(host=host, port=port, open_browser=open_browser)
 
 
 if __name__ == "__main__":
