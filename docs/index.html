@@ -454,6 +454,12 @@
       transition: opacity 0.15s ease, stroke-width 0.15s ease;
     }
     .hoverable:hover { opacity: 0.86; }
+    .ring-click-target { cursor: zoom-in; }
+    .ring-zoom-dialog { width: min(1000px, calc(100vw - 28px)); max-height: 94vh; }
+    .ring-zoom-body { padding: 12px 18px 4px; }
+    .ring-zoom-svg { display: block; width: 100%; height: min(70vh, 720px); }
+    .ring-zoom-info { min-height: 48px; margin: 8px 0 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); background: rgba(8,19,17,0.86); line-height: 1.45; }
+    .ring-zoom-info b { color: var(--ink); }
     @media (max-width: 880px) {
       .dashboard { grid-template-columns: 1fr; }
       .plot-wrap { order: -1; }
@@ -500,6 +506,17 @@
           </div>
           <div class="advanced-dialog-body" id="advanced_dialog_body"></div>
           <div class="advanced-dialog-actions"><button type="button" class="model-source-cancel" id="advanced_close">Close</button></div>
+        </dialog>
+        <dialog class="model-source-dialog ring-zoom-dialog" id="ring_zoom_dialog" aria-labelledby="ring_zoom_title">
+          <div class="model-source-head">
+            <h2 id="ring_zoom_title">Expanded ring</h2>
+            <p>Hover over a collector channel or ring segment to inspect its location and calculated values.</p>
+          </div>
+          <div class="ring-zoom-body">
+            <svg id="ring_zoom_svg" class="ring-zoom-svg" viewBox="0 0 520 420"></svg>
+            <div id="ring_zoom_info" class="ring-zoom-info">Move the pointer over the enlarged diagram.</div>
+          </div>
+          <div class="advanced-dialog-actions"><button type="button" class="model-source-cancel" id="ring_zoom_close">Close</button></div>
         </dialog>
         <details class="panel" id="panel_solver" open>
           <summary>
@@ -830,7 +847,7 @@
               <p>Circular preview of the current collector-channel layout, segment profiles, and interventions.</p>
             </div>
             <div class="ring-frame">
-              <svg id="setup_svg" class="ring" viewBox="0 0 420 420"></svg>
+              <svg id="setup_svg" class="ring ring-click-target" viewBox="0 0 420 420" title="Click to enlarge"></svg>
               <div id="setup_summary" class="setup-summary"></div>
               <div class="legend">
                 <div class="legend-item"><span class="swatch" style="background: var(--trab);"></span><span>Trabeculotomy</span></div>
@@ -848,7 +865,7 @@
               <p>Pressure heatmap, canal-height ring, and collector-channel flow from the latest solve.</p>
             </div>
             <div class="ring-frame">
-              <svg id="solution_svg" class="ring" viewBox="0 0 520 420"></svg>
+              <svg id="solution_svg" class="ring ring-click-target" viewBox="0 0 520 420" title="Click to enlarge"></svg>
               <div id="solution_note" class="solution-note">Waiting for the first solve.</div>
               <div id="solution_info" class="solution-info">Hover the pressure ring or a collector channel to inspect local values.</div>
             </div>
@@ -3081,43 +3098,52 @@ var AqueousOutflow = (function () {
     model.trabeculotomies.forEach(function (range) {
       var start = 360 * normalizeNode(range.start, model.totalNodes) / model.totalNodes;
       var span = 360 * rangeSpanNodes(range) / model.totalNodes;
+      var trabData = ' class="hoverable" data-kind="setup-procedure" data-procedure="Trabeculotomy" data-start="' + range.start + '" data-end="' + range.end + '" data-theta="' + start.toFixed(2) + '"';
       if (span >= 359.5) {
-        parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + scRadius + '" fill="none" stroke="#1a9b73" stroke-width="12"></circle>');
+        parts.push('<circle' + trabData + ' cx="' + cx + '" cy="' + cy + '" r="' + scRadius + '" fill="none" stroke="#1a9b73" stroke-width="12"></circle>');
       } else {
-        parts.push('<path d="' + arcPath(cx, cy, scRadius, start, span) + '" stroke="#1a9b73" stroke-width="12" stroke-linecap="round" fill="none"></path>');
+        parts.push('<path' + trabData + ' d="' + arcPath(cx, cy, scRadius, start, span) + '" stroke="#1a9b73" stroke-width="12" stroke-linecap="round" fill="none"></path>');
       }
     });
 
     model.sinusotomies.forEach(function (range) {
       var start = 360 * normalizeNode(range.start, model.totalNodes) / model.totalNodes;
       var span = 360 * rangeSpanNodes(range) / model.totalNodes;
+      var sinusData = ' class="hoverable" data-kind="setup-procedure" data-procedure="Sinusotomy" data-start="' + range.start + '" data-end="' + range.end + '" data-theta="' + start.toFixed(2) + '"';
       if (span >= 359.5) {
-        parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + (ccRadius - 8) + '" fill="none" stroke="#d9782b" stroke-width="8" stroke-dasharray="3 5"></circle>');
+        parts.push('<circle' + sinusData + ' cx="' + cx + '" cy="' + cy + '" r="' + (ccRadius - 8) + '" fill="none" stroke="#d9782b" stroke-width="8" stroke-dasharray="3 5"></circle>');
       } else {
-        parts.push('<path d="' + arcPath(cx, cy, ccRadius - 8, start, span) + '" stroke="#d9782b" stroke-width="8" stroke-linecap="round" stroke-dasharray="3 5" fill="none"></path>');
+        parts.push('<path' + sinusData + ' d="' + arcPath(cx, cy, ccRadius - 8, start, span) + '" stroke="#d9782b" stroke-width="8" stroke-linecap="round" stroke-dasharray="3 5" fill="none"></path>');
       }
     });
 
     model.stents.forEach(function (stent) {
       var start = 360 * normalizeNode(stent.loc, model.totalNodes) / model.totalNodes;
       var span = 360 * Math.max(1, stent.span_nodes || 1) / model.totalNodes;
-      parts.push('<path d="' + arcPath(cx, cy, scRadius - 2, start, span) + '" stroke="#2075b8" stroke-width="10" stroke-linecap="round" fill="none"></path>');
+      parts.push('<path class="hoverable" data-kind="setup-procedure" data-procedure="iStent" data-start="' + stent.loc + '" data-end="' +
+        (stent.loc + Math.max(1, stent.span_nodes || 1) - 1) + '" data-theta="' + start.toFixed(2) + '" d="' + arcPath(cx, cy, scRadius - 2, start, span) +
+        '" stroke="#2075b8" stroke-width="10" stroke-linecap="round" fill="none"></path>');
       var inletNode = normalizeNode(stent.loc + (stent.inlet_index || 0), model.totalNodes);
       var inlet = polarPoint(cx, cy, scRadius - 2, 360 * inletNode / model.totalNodes);
       parts.push('<circle cx="' + inlet.x.toFixed(2) + '" cy="' + inlet.y.toFixed(2) + '" r="4.5" fill="#0b1715" stroke="#4ea3ff" stroke-width="2"></circle>');
     });
 
     model.yagHoles.forEach(function (node) {
-      var point = polarPoint(cx, cy, tmRadius + 18, 360 * normalizeNode(node, model.totalNodes) / model.totalNodes);
-      parts.push('<circle cx="' + point.x.toFixed(2) + '" cy="' + point.y.toFixed(2) + '" r="5.5" fill="#0b1715" stroke="#ff6fa7" stroke-width="3"></circle>');
+      var theta = 360 * normalizeNode(node, model.totalNodes) / model.totalNodes;
+      var point = polarPoint(cx, cy, tmRadius + 18, theta);
+      parts.push('<circle class="hoverable" data-kind="setup-procedure" data-procedure="YAG hole" data-start="' + node + '" data-end="' + node +
+        '" data-theta="' + theta.toFixed(2) + '" cx="' + point.x.toFixed(2) + '" cy="' + point.y.toFixed(2) +
+        '" r="5.5" fill="#0b1715" stroke="#ff6fa7" stroke-width="3"></circle>');
     });
 
     model.damageNodes.forEach(function (node) {
       var start = 360 * normalizeNode(node, model.totalNodes) / model.totalNodes;
       var span = Math.max(0.8, 360 / model.totalNodes);
-      parts.push('<path d="' + arcPath(cx, cy, tmRadius, start, span) + '" stroke="#e85d5d" stroke-width="20" fill="none" opacity="0.98"></path>');
+      var damageData = ' class="hoverable" data-kind="setup-procedure" data-procedure="Laser damage — ' + (model.damageMode === "full_node" ? "full node" : "TM only") +
+        '" data-start="' + node + '" data-end="' + node + '" data-theta="' + start.toFixed(2) + '"';
+      parts.push('<path' + damageData + ' d="' + arcPath(cx, cy, tmRadius, start, span) + '" stroke="#e85d5d" stroke-width="20" fill="none" opacity="0.98"></path>');
       if (model.damageMode === "full_node") {
-        parts.push('<path d="' + arcPath(cx, cy, scRadius, start, span) + '" stroke="#e85d5d" stroke-width="24" fill="none" opacity="0.76"></path>');
+        parts.push('<path' + damageData + ' d="' + arcPath(cx, cy, scRadius, start, span) + '" stroke="#e85d5d" stroke-width="24" fill="none" opacity="0.76"></path>');
       }
     });
 
@@ -3126,7 +3152,8 @@ var AqueousOutflow = (function () {
       var inner = polarPoint(cx, cy, ccRadius - 3, angle);
       var outer = polarPoint(cx, cy, ccRadius + 22, angle);
       var width = clamp(1.2 + (Number(cc.ratio) || 1) * 0.8, 1.4, 6.5);
-      parts.push('<line x1="' + inner.x.toFixed(2) + '" y1="' + inner.y.toFixed(2) + '" x2="' + outer.x.toFixed(2) +
+      parts.push('<line class="hoverable" data-kind="setup-cc" data-loc="' + cc.loc + '" data-ratio="' + cc.ratio +
+        '" data-theta="' + angle.toFixed(2) + '" x1="' + inner.x.toFixed(2) + '" y1="' + inner.y.toFixed(2) + '" x2="' + outer.x.toFixed(2) +
         '" y2="' + outer.y.toFixed(2) + '" stroke="#4ea3ff" stroke-width="' + width.toFixed(2) + '" opacity="0.9"></line>');
     });
 
@@ -3336,6 +3363,55 @@ var AqueousOutflow = (function () {
     note.textContent = resultDirty
       ? "Showing the latest solved field. Inputs changed afterward, so the setup preview is newer than this solution map."
       : "Showing the latest solve.";
+  }
+
+  function openRingZoom(kind) {
+    var source = kind === "setup" ? $("setup_svg") : $("solution_svg");
+    var zoom = $("ring_zoom_svg");
+    var info = $("ring_zoom_info");
+    $("ring_zoom_title").textContent = kind === "setup" ? "Expanded Setup Ring" : "Expanded Solution Ring";
+    zoom.setAttribute("viewBox", source.getAttribute("viewBox"));
+    zoom.innerHTML = source.innerHTML;
+
+    function defaultMessage() {
+      if (kind === "setup") {
+        info.innerHTML = "Hover over a collector channel or colored procedure marker to inspect its type, node range, and angular position.";
+      } else if (!lastResult) {
+        info.textContent = "Run Solve to create an interactive solution map.";
+      } else {
+        info.innerHTML = "Hover over the pressure ring for local pressure and canal height, or over a collector channel for its flow.";
+      }
+    }
+
+    zoom.onmousemove = function (event) {
+      var target = event.target.closest && event.target.closest("[data-kind]");
+      if (!target || !zoom.contains(target)) return;
+      if (target.dataset.kind === "setup-cc") {
+        info.innerHTML = "<b>Collector channel</b> &nbsp; Node: <b>" + escapeHtml(target.dataset.loc) +
+          "</b> &nbsp; Position: <b>" + fmt(Number(target.dataset.theta)) + "°</b> &nbsp; Multiplier: <b>" + fmt(Number(target.dataset.ratio)) + "</b>";
+      } else if (target.dataset.kind === "setup-procedure") {
+        var startNode = Number(target.dataset.start);
+        var endNode = Number(target.dataset.end);
+        var setupTotal = lastResult && lastResult.meta ? lastResult.meta.total_nodes : Math.max(1, Number($("n").value) * Number($("m").value));
+        var nodeText = startNode === endNode ? String(startNode) : startNode + "–" + endNode;
+        var angleText = startNode === endNode ? fmt(Number(target.dataset.theta)) + "°"
+          : fmt(360 * startNode / setupTotal) + "°–" + fmt(360 * endNode / setupTotal) + "°";
+        info.innerHTML = "<b>" + escapeHtml(target.dataset.procedure) + "</b> &nbsp; Node(s): <b>" + escapeHtml(nodeText) +
+          "</b> &nbsp; Position: <b>" + escapeHtml(angleText) + "</b>";
+      } else if (target.dataset.kind === "node") {
+        info.innerHTML = "<b>Ring segment</b> &nbsp; Position: <b>" + fmt(Number(target.dataset.theta)) +
+          "°</b> &nbsp; Psc: <b>" + fmt(Number(target.dataset.pressure)) + " mmHg</b> &nbsp; Canal height: <b>" +
+          fmt(Number(target.dataset.height)) + " um</b>";
+      } else if (target.dataset.kind === "cc") {
+        var total = lastResult && lastResult.meta ? lastResult.meta.total_nodes : 1200;
+        var theta = 360 * Number(target.dataset.loc) / Math.max(1, total);
+        info.innerHTML = "<b>Collector channel</b> &nbsp; Node: <b>" + escapeHtml(target.dataset.loc) +
+          "</b> &nbsp; Position: <b>" + fmt(theta) + "°</b> &nbsp; Flow: <b>" + fmt(Number(target.dataset.flow)) + " uL/min</b>";
+      }
+    };
+    zoom.onmouseleave = defaultMessage;
+    defaultMessage();
+    $("ring_zoom_dialog").showModal();
   }
 
   /* ---------------- inline SVG line chart (replaces Plotly) ---------------- */
@@ -3734,6 +3810,9 @@ var AqueousOutflow = (function () {
   });
   $("advanced_settings").addEventListener("click", function () { $("advanced_dialog").showModal(); });
   $("advanced_close").addEventListener("click", function () { $("advanced_dialog").close(); });
+  $("setup_svg").addEventListener("click", function () { openRingZoom("setup"); });
+  $("solution_svg").addEventListener("click", function () { openRingZoom("solution"); });
+  $("ring_zoom_close").addEventListener("click", function () { $("ring_zoom_dialog").close(); });
   $("import_model").addEventListener("click", function () { $("model_source_dialog").showModal(); });
   $("model_source_cancel").addEventListener("click", function () { $("model_source_dialog").close(); });
   $("model_source_dialog").addEventListener("click", function (event) {
