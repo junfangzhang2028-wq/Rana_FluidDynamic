@@ -1,0 +1,3435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aqueous Outflow Calculator</title>
+  <style>
+    :root {
+      --bg: #071311;
+      --panel: #111d1a;
+      --ink: #ecf6f1;
+      --muted: #9eb0a8;
+      --line: #29423a;
+      --accent: #32b8a3;
+      --accent-dark: #238675;
+      --warn: #f0b35b;
+      --soft-green: #18352f;
+      --soft-orange: #3a2c1f;
+      --tm-low: #f1dece;
+      --tm-high: #9a4f18;
+      --sc-low: #eff5ea;
+      --sc-high: #147c72;
+      --trab: #1a9b73;
+      --sinus: #d9782b;
+      --stent: #2075b8;
+      --yag: #bf3f6d;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Aptos", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(50,184,163,0.22), transparent 32%),
+        linear-gradient(135deg, rgba(14,42,36,0.98), rgba(7,14,18,0.98)),
+        var(--bg);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      height: 100%;
+    }
+    aside {
+      padding: 14px 12px 12px;
+      border-right: 1px solid var(--line);
+      background: rgba(10,24,21,0.92);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+    .aside-scroll {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding-right: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: #35564b transparent;
+    }
+    .aside-scroll::-webkit-scrollbar,
+    main::-webkit-scrollbar {
+      width: 10px;
+    }
+    .aside-scroll::-webkit-scrollbar-track,
+    main::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .aside-scroll::-webkit-scrollbar-thumb,
+    main::-webkit-scrollbar-thumb {
+      background: #35564b;
+      background-clip: content-box;
+      border: 2px solid transparent;
+      border-radius: 999px;
+    }
+    .aside-scroll::-webkit-scrollbar-thumb:hover,
+    main::-webkit-scrollbar-thumb:hover {
+      background: #47705f;
+      background-clip: content-box;
+    }
+    main {
+      scrollbar-width: thin;
+      scrollbar-color: #35564b transparent;
+    }
+    .aside-actions {
+      flex: 0 0 auto;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(10,24,21,0), rgba(10,24,21,0.86) 28%, rgba(10,24,21,0.96));
+    }
+    main {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-width: 0;
+      min-height: 0;
+      padding: 18px;
+      gap: 14px;
+      overflow-y: auto;
+    }
+    .dashboard {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .visual-stack {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 21px;
+      font-weight: 700;
+    }
+    .import-model-button {
+      width: 100%;
+      margin: 2px 0 8px;
+      padding: 10px 12px;
+      border: 1px solid rgba(50,184,163,0.38);
+      border-radius: 10px;
+      background: rgba(50,184,163,0.12);
+      color: #d9fff6;
+      font-size: 14px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      height: auto;
+    }
+    .import-model-button::after {
+      content: "+";
+      flex: 0 0 auto;
+      display: inline-grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 18px;
+      line-height: 1;
+    }
+    .import-model-button:hover { background: rgba(50,184,163,0.2); }
+    .sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 13px;
+    }
+    .panel {
+      margin-bottom: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(17,29,26,0.86);
+      overflow: hidden;
+      box-shadow: 0 6px 16px rgba(23, 44, 36, 0.03);
+    }
+    .panel summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      list-style: none;
+      cursor: pointer;
+      padding: 12px 14px;
+      user-select: none;
+      background: linear-gradient(180deg, rgba(24,45,39,0.96), rgba(17,29,26,0.92));
+    }
+    .panel summary::-webkit-details-marker { display: none; }
+    .panel[open] summary { border-bottom: 1px solid var(--line); }
+    .panel-head { min-width: 0; }
+    .panel-head h2 {
+      margin: 0;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+    .panel-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .panel-toggle {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      flex: 0 0 auto;
+    }
+    .section-body { padding: 12px 14px 14px; }
+    label {
+      display: block;
+      margin: 9px 0 5px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    input, select {
+      width: 100%;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0 10px;
+      color: var(--ink);
+      background: #0b1715;
+      font-size: 14px;
+    }
+    textarea {
+      width: 100%;
+      min-height: 54px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--ink);
+      background: #0b1715;
+      font: 14px "Segoe UI", "Aptos", system-ui, sans-serif;
+      resize: vertical;
+    }
+    input:disabled { opacity: 0.55; }
+    .hint {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .checkline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .checkline input { width: 16px; height: 16px; }
+    button {
+      width: 100%;
+      height: 40px;
+      border: 0;
+      border-radius: 6px;
+      margin-top: 14px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 650;
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    button:hover { background: var(--accent-dark); }
+    button:disabled { opacity: 0.6; cursor: progress; }
+    .solve-button {
+      margin-top: 0;
+      height: 44px;
+      border-radius: 10px;
+      font-size: 15px;
+    }
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .compact-label { margin-top: 6px; }
+    .subtle-divider {
+      height: 1px;
+      margin: 12px 0 6px;
+      background: linear-gradient(90deg, rgba(41,66,58,0.18), rgba(72,112,100,0.85), rgba(41,66,58,0.18));
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, rgba(17,29,26,0.98), rgba(11,23,21,0.98));
+      overflow: hidden;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.28);
+    }
+    .card-head {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(41,66,58,0.9);
+      background: linear-gradient(180deg, rgba(21,40,35,0.96), rgba(14,28,25,0.86));
+    }
+    .card-head h3 { margin: 0; font-size: 16px; font-weight: 700; }
+    .card-head p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .ring-frame { padding: 12px 14px 14px; }
+    .ring { display: block; width: 100%; height: auto; }
+    .setup-summary,
+    .solution-info,
+    .solution-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(9,20,18,0.74);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .setup-summary { display: grid; gap: 4px; }
+    .solution-info { display: grid; gap: 6px; }
+    .solution-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .solution-row span:first-child { color: var(--muted); }
+    .solution-note { color: var(--muted); }
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      margin-top: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .swatch {
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(0,0,0,0.08);
+      flex: 0 0 auto;
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 10px;
+    }
+    .metric {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(17,29,26,0.9);
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .metric b { font-size: 22px; font-weight: 700; }
+    .plot-wrap { display: flex; flex-direction: column; }
+    #plot {
+      position: relative;
+      width: 100%;
+      height: 460px;
+      min-height: 320px;
+    }
+    #plot svg { display: block; width: 100%; height: 100%; }
+    .chart-tip {
+      position: absolute;
+      pointer-events: none;
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: rgba(9,20,18,0.95);
+      color: var(--ink);
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: nowrap;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.45);
+      opacity: 0;
+      transition: opacity .1s ease;
+    }
+    .chart-tip b { color: var(--accent); }
+    .status {
+      min-height: 20px;
+      margin-top: 10px;
+      color: var(--warn);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .hidden { display: none !important; }
+    .ring-label { font-size: 12px; fill: var(--muted); }
+    .ring-title { font-size: 14px; font-weight: 700; fill: var(--ink); }
+    .anatomy-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      fill: #d7e7df;
+      text-transform: uppercase;
+    }
+    .anatomy-label-side {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      fill: #d7e7df;
+      text-transform: uppercase;
+    }
+    .anatomy-divider {
+      stroke: rgba(215, 231, 223, 0.36);
+      stroke-width: 1.4;
+      stroke-dasharray: 4 4;
+    }
+    .anatomy-sector { opacity: 0.62; }
+    .hoverable {
+      cursor: pointer;
+      transition: opacity 0.15s ease, stroke-width 0.15s ease;
+    }
+    .hoverable:hover { opacity: 0.86; }
+    @media (max-width: 880px) {
+      .dashboard { grid-template-columns: 1fr; }
+      .plot-wrap { order: -1; }
+      .ring { max-width: 420px; margin: 0 auto; }
+    }
+    @media (max-width: 900px) {
+      html, body { height: auto; }
+      .app { grid-template-columns: 1fr; height: auto; }
+      aside { border-right: 0; border-bottom: 1px solid var(--line); }
+      .aside-scroll { overflow: visible; }
+      main { overflow: visible; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      #plot { height: 380px; }
+      .legend { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="aside-scroll">
+        <h1>Aqueous Outflow Model</h1>
+        <button type="button" class="import-model-button" id="import_model" title="Load a previously exported model file.">Import eye model file</button>
+        <input id="import_file" type="file" accept="application/json,.json" class="hidden" />
+        <details class="panel" id="panel_solver" open>
+          <summary>
+            <div class="panel-head">
+              <h2>Solver</h2>
+              <p>Mode, pressure-flow target, and baseline resistance.</p>
+            </div>
+            <span class="panel-toggle">Core</span>
+          </summary>
+          <div class="section-body">
+            <label>Mode</label>
+            <select id="mode">
+              <option value="constant flow">constant flow</option>
+              <option value="constant pressure">constant pressure</option>
+            </select>
+            <div class="grid2">
+              <div>
+                <label>Geometry</label>
+                <select id="geometry">
+                  <option value="ellipse">ellipse</option>
+                  <option value="rectangle">rectangle</option>
+                </select>
+              </div>
+              <div>
+                <label>Eye</label>
+                <select id="eye_side">
+                  <option value="right">Right (OD)</option>
+                  <option value="left">Left (OS)</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid2">
+              <div>
+                <label id="iop_label">Baseline IOP</label>
+                <input id="iop" type="number" step="0.1" value="15.09" />
+              </div>
+              <div><label>Qt</label><input id="qt" type="number" step="0.1" value="2.0" /></div>
+            </div>
+            <div id="iop_hint" class="hint">In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled.</div>
+            <div class="grid2">
+              <div><label>Pev</label><input id="pev" type="number" step="0.1" value="8.0" /></div>
+              <div><label>Rtm</label><input id="rtm" type="number" step="0.1" placeholder="default" /></div>
+            </div>
+            <div class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP</span></div>
+            <div class="hint">Infers Rtm from a baseline eye with no surgeries and the default CC distribution. If unconventional flow is enabled, Auto RTM recalibrates Rtm to keep the same baseline IOP.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_intervention" open>
+          <summary>
+            <div class="panel-head">
+              <h2>Intervention</h2>
+              <p>Collector-channel layout and surgery-specific inputs.</p>
+            </div>
+            <span class="panel-toggle">Main</span>
+          </summary>
+          <div class="section-body">
+            <label>Surgery</label>
+            <select id="surgery">
+              <option>None</option>
+              <option>Trabeculotomy</option>
+              <option>YAG holes</option>
+              <option>iStent</option>
+            </select>
+            <div id="surgery_defaults" class="grid2">
+              <div id="trab_hours_wrap">
+                <label>Trab hours</label>
+                <select id="trab_hours">
+                  <option>1</option>
+                  <option>4</option>
+                  <option>12</option>
+                </select>
+              </div>
+              <div id="yag_count_wrap">
+                <label>YAG holes</label><input id="yag_holes" type="number" step="1" value="2" />
+              </div>
+            </div>
+            <input id="stent_node" type="hidden" value="0" />
+
+            <label>Trabeculotomy ranges</label>
+            <textarea id="trabeculotomies" placeholder="Example: 0-99, 300-399"></textarea>
+            <div id="trabeculotomy_hint" class="hint">Ranges are SC node indexes. Leave blank to use Trab hours when Surgery is Trabeculotomy.</div>
+
+            <label>Sinusotomy ranges</label>
+            <textarea id="sinusotomies" placeholder="Example: 120-180, 620-700"></textarea>
+            <div class="hint">Sinusotomy ranges can be combined with any selected surgery.</div>
+
+            <label>YAG hole nodes</label>
+            <input id="yag_holes_list" type="text" placeholder="Example: 0, 200, 400" />
+            <div id="yag_nodes_hint" class="hint">Leave blank to use the YAG hole count above when Surgery is YAG holes.</div>
+
+            <label>iStent nodes</label>
+            <input id="stent_nodes" type="text" placeholder="Example: 0, 300, 600" />
+            <div id="stent_nodes_hint" class="hint">Each node gets the stent model configured below. If Surgery is iStent and this is blank, node 0 is used.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_constants">
+          <summary>
+            <div class="panel-head">
+              <h2>Constants</h2>
+              <p>Equivalent to the online app's Edit Constants drawer.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <div class="grid2">
+              <div><label>N collector channels</label><input id="n" type="number" step="1" value="30" /></div>
+              <div><label>M nodes per CC</label><input id="m" type="number" step="1" value="40" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Etm</label><input id="etm" type="number" step="0.1" value="13" /></div>
+              <div><label>h0 (um)</label><input id="h0" type="number" step="0.1" value="20" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>hs (um)</label><input id="hs" type="number" step="0.1" value="3.0" /></div>
+              <div><label>Rcc override</label><input id="rcc" type="number" step="0.1" placeholder="auto (~1.5 at 15 mmHg)" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Qu</label><input id="qu" type="number" step="0.01" value="0.28" /></div>
+              <div><label>max error</label><input id="max_error" type="number" step="0.00001" value="0.0001" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Stent beta</label><input id="beta" type="number" step="0.1" placeholder="1.0" /></div>
+              <div class="checkline"><input id="unconventional" type="checkbox" /><span>Use unconventional flow</span></div>
+            </div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_profiles">
+          <summary>
+            <div class="panel-head">
+              <h2>Segment Profiles</h2>
+              <p>Clock-hour TM resistance and segment-wise SC baseline height.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <label>TM resistance profile</label>
+            <textarea id="rtm_profile" placeholder="Examples: 24 or 24,24,24,... (12 values) or 1:24, 2:30, ..., 12:24"></textarea>
+            <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar RTM and auto RTM.</div>
+            <div class="subtle-divider"></div>
+            <label>TM full node array</label>
+            <textarea id="rtm_node_values" placeholder="Examples: 2400 or 2400,2400,... (N*M values)"></textarea>
+            <div class="hint">Direct local TM resistor values for every SC node. Use 1 value to repeat uniformly or exactly N*M values to import a fully non-uniform TM map.</div>
+            <div class="subtle-divider"></div>
+            <label>SC baseline height profile</label>
+            <textarea id="h0_profile" placeholder="Examples: 20 or 20,20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
+            <div class="hint">Takes N segment values, where N is the current collector-channel count. If provided, this overrides scalar h0.</div>
+            <div class="subtle-divider"></div>
+            <label>SC full node array</label>
+            <textarea id="h0_node_values" placeholder="Examples: 20 or 20,20,... (N*M values)"></textarea>
+            <div class="hint">Direct baseline SC height at every node. Use 1 value to repeat uniformly or exactly N*M values for a fully non-uniform SC baseline map.</div>
+            <div class="subtle-divider"></div>
+            <label>TM node resistance overrides</label>
+            <textarea id="rtm_node_overrides" placeholder="Examples: 120:2400, 121-140:3200"></textarea>
+            <div class="hint">Format is node:value or start-end:value. Values are local per-node TM resistors, so these apply after auto RTM, scalar RTM, or the 12-segment TM profile.</div>
+            <div class="subtle-divider"></div>
+            <label>SC node height overrides</label>
+            <textarea id="h0_node_overrides" placeholder="Examples: 120:20, 121-140:14"></textarea>
+            <div class="hint">Use this to locally change the SC baseline height at arbitrary nodes. This is the closest direct way to modify local SC circumferential resistance in the current solver.</div>
+            <div class="subtle-divider"></div>
+            <label>SC conductance multiplier</label>
+            <textarea id="gsc_multiplier" placeholder="Examples: 1.0 or 1.0,1.0,... (N*M values) or 120:0.5, 121-140:2.0"></textarea>
+            <div class="hint">Applies a multiplicative factor to each circumferential SC segment conductance between node i and i+1. Accepts either 1/exact N*M values or segment:value overrides.</div>
+            <div class="subtle-divider"></div>
+            <label>SC conductance override</label>
+            <textarea id="gsc_override" placeholder="Examples: 0.002 or 0.002,0.002,... (N*M values) or 120:0.0, 121-140:0.003"></textarea>
+            <div class="hint">Directly replaces the computed conductance of selected SC segments. Segment i means the link between node i and node i+1. This overrides the height-based conductance calculation for those segments.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_ccs">
+          <summary>
+            <div class="panel-head">
+              <h2>Collector Channels</h2>
+              <p>Manual non-uniform distribution, closer to the online editor.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <label>Manual CC distribution</label>
+            <textarea id="ccs" placeholder="Example: 0:1, 40:1, 80:0.5, 120:2"></textarea>
+            <div class="hint">Format is node:per-channel conductance multiplier. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
+            <div class="hint">A multiplier changes only that collector channel; if only a node is provided, the multiplier defaults to 1.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_stent">
+          <summary>
+            <div class="panel-head">
+              <h2>Stent Editor</h2>
+              <p>Custom geometry for iStent-style local simulations.</p>
+            </div>
+            <span class="panel-toggle">Advanced</span>
+          </summary>
+          <div class="section-body">
+            <div class="hint">iStent inject example: length 230 um, inlet offset 115 um, width 50 um, height 50 um, after height 150 um, inlet conductance 42.15, two-way checked, ellipse geometry.</div>
+            <label>Name</label>
+            <input id="stent_name" type="text" value="Custom iStent" />
+            <div class="grid2">
+              <div><label>Length (um)</label><input id="stent_length" type="number" step="10" value="1000" /></div>
+              <div><label>Inlet offset (um)</label><input id="stent_loc_inlet" type="number" step="10" value="0" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Width (um)</label><input id="stent_width" type="number" step="1" value="120" /></div>
+              <div><label>Height (um)</label><input id="stent_height" type="number" step="1" value="60" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Before dilation nodes</label><input id="stent_l_before" type="number" step="1" value="0" /></div>
+              <div><label>After dilation nodes</label><input id="stent_l_after" type="number" step="1" value="0" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>After height (um)</label><input id="stent_h_after" type="number" step="1" placeholder="same as height" /></div>
+              <div><label>Inlet conductance</label><input id="stent_g_inlet" type="number" step="0.001" value="0" /></div>
+            </div>
+            <div class="grid2">
+              <div>
+                <label>Stent geometry</label>
+                <select id="stent_geometry">
+                  <option value="">same as solver</option>
+                  <option value="ellipse">ellipse</option>
+                  <option value="rectangle">rectangle</option>
+                </select>
+              </div>
+              <div class="checkline"><input id="stent_two_way" type="checkbox" checked /><span>Two-way inlet</span></div>
+            </div>
+            <div class="subtle-divider"></div>
+            <label>Windowed stent options</label>
+            <div class="grid2">
+              <div><label class="compact-label">Number of windows</label><input id="stent_n_windows" type="number" step="1" value="0" /></div>
+              <div><label class="compact-label">Window length (um)</label><input id="stent_l_window" type="number" step="10" placeholder="required if windows > 0" /></div>
+            </div>
+            <div class="grid2">
+              <div><label>Window height (um)</label><input id="stent_h_window" type="number" step="1" placeholder="required if windows > 0" /></div>
+              <div><label>Spine length (um)</label><input id="stent_l_spine" type="number" step="10" placeholder="required if windows > 0" /></div>
+            </div>
+            <label>Spine height (um)</label>
+            <input id="stent_h_spine" type="number" step="1" placeholder="required if windows > 0" />
+            <div class="hint">For a simple iStent, leave window count at 0. For devices with windows/spines, fill all windowed stent fields.</div>
+          </div>
+        </details>
+
+        <details class="panel" id="panel_plot" open>
+          <summary>
+            <div class="panel-head">
+              <h2>Plot</h2>
+              <p>Choose which profile is shown in the line chart.</p>
+            </div>
+            <span class="panel-toggle">View</span>
+          </summary>
+          <div class="section-body">
+            <label>Plot type</label>
+            <select id="plot_type">
+              <option value="pressure">Pressure distribution</option>
+              <option value="height">Canal height</option>
+              <option value="jcc">Collector channel flow</option>
+            </select>
+            <button type="button" id="exportBtn">Export model + results (JSON)</button>
+            <div id="status" class="status"></div>
+          </div>
+        </details>
+      </div>
+
+      <div class="aside-actions">
+        <button id="solveBtn" class="solve-button">Solve</button>
+      </div>
+    </aside>
+
+    <main>
+      <div class="metrics">
+        <div class="metric"><span>IOP</span><b id="m_iop">-</b></div>
+        <div class="metric"><span>Flow rate</span><b id="m_flowrate">-</b></div>
+        <div class="metric"><span>Resistance</span><b id="m_resistance">-</b></div>
+        <div class="metric"><span>Facility</span><b id="m_facility">-</b></div>
+      </div>
+      <div class="dashboard">
+        <div class="visual-stack">
+          <section class="card">
+            <div class="card-head">
+              <h3>Setup Ring</h3>
+              <p>Circular preview of the current collector-channel layout, segment profiles, and interventions.</p>
+            </div>
+            <div class="ring-frame">
+              <svg id="setup_svg" class="ring" viewBox="0 0 420 420"></svg>
+              <div id="setup_summary" class="setup-summary"></div>
+              <div class="legend">
+                <div class="legend-item"><span class="swatch" style="background: var(--trab);"></span><span>Trabeculotomy</span></div>
+                <div class="legend-item"><span class="swatch" style="background: var(--sinus);"></span><span>Sinusotomy</span></div>
+                <div class="legend-item"><span class="swatch" style="background: var(--stent);"></span><span>Stent span</span></div>
+                <div class="legend-item"><span class="swatch" style="background: var(--yag);"></span><span>YAG hole</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-head">
+              <h3>Solution Ring</h3>
+              <p>Pressure heatmap, canal-height ring, and collector-channel flow from the latest solve.</p>
+            </div>
+            <div class="ring-frame">
+              <svg id="solution_svg" class="ring" viewBox="0 0 520 420"></svg>
+              <div id="solution_note" class="solution-note">Waiting for the first solve.</div>
+              <div id="solution_info" class="solution-info">Hover the pressure ring or a collector channel to inspect local values.</div>
+            </div>
+          </section>
+        </div>
+
+        <section class="card plot-wrap">
+          <div class="card-head">
+            <h3>Profiles</h3>
+            <p>Line plots for circumferential pressure, canal height, and collector-channel flow.</p>
+          </div>
+          <div id="plot"><div class="chart-tip" id="chart_tip"></div></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script>
+/* =====================================================================
+   Aqueous Outflow Model - JavaScript port of the Python solver stack
+   ---------------------------------------------------------------------
+   Ports:
+     offline/solver.py        -> model state, get_rcc/get_h/get_gsc/get_g/solve, Stent
+     offline/gauss_seidel.py  -> gaussSeidel (10 sweeps, used after iteration 30)
+     offline/outputs_trial.py -> solveCP / solveCF / solveTrabeculotomy / solveYagHoles
+     local_web_calculator.py  -> input parsing, auto-RTM search, solvePayload
+
+   The Python code used scipy.sparse.linalg.spsolve on a dense-built matrix.
+   The matrix is cyclic tridiagonal with one extra bordered row/column (the
+   IOP unknown in constant-flow mode), so this port stores only those bands
+   and solves them in O(n) with a cyclic Thomas algorithm (Sherman-Morrison)
+   plus a Schur complement for the border. A dense LU with partial pivoting
+   is kept as a fallback if the banded path produces a non-finite result.
+   ===================================================================== */
+
+var AqueousOutflow = (function () {
+  "use strict";
+
+  /* ---------------------------------------------------------------
+     Module constants (solver.py module level)
+     --------------------------------------------------------------- */
+  var W = 230.0;      // Width of SC (um)
+  var MU = 9e-8;      // Viscosity of aqueous humor (mmHg * min)
+  var XCC = 1200.0;   // Distance between adjacent CCs (um)
+
+  // Module-global model state; mirrors solver.py globals, which persist
+  // between calls in the Python process (Stent construction reads S.dx).
+  var S = {
+    dx: 30.0,
+    N: 30,
+    M: 40,
+    Etm: 13.0,
+    h0: null,
+    Rtm: null,
+    hs: 3.0,
+    beta: 1.0,
+    Rcc: 0.0,
+    GscMultiplier: null,
+    GscOverride: null,
+    Pev: 0.0,
+    Qu: 0.0,
+    Ks: null,
+    overallRtm: 0.0
+  };
+
+  /* ---------------------------------------------------------------
+     Small helpers
+     --------------------------------------------------------------- */
+  function mod(a, n) { return ((a % n) + n) % n; }
+
+  function filled(count, value) {
+    var out = new Float64Array(count);
+    if (value !== 0) out.fill(value);
+    return out;
+  }
+
+  function cbrtSigned(x) {
+    // numpy: (negative) ** (1/3) -> nan.  Math.pow behaves the same way.
+    return Math.pow(x, 1.0 / 3.0);
+  }
+
+  // numpy-style slice assignment: arr[start:stop] = value
+  function sliceAssign(arr, start, stop, value) {
+    var n = arr.length;
+    if (start < 0) start += n;
+    if (stop < 0) stop += n;
+    if (start < 0) start = 0;
+    if (stop > n) stop = n;
+    for (var i = start; i < stop; i++) arr[i] = value;
+  }
+
+  function expandNetworkParam(values, count, def, allowNan) {
+    if (values === null || values === undefined) {
+      return filled(count, allowNan ? NaN : def);
+    }
+    if (typeof values === "number") return filled(count, values);
+    if (values.length !== count) {
+      throw new Error("Expected " + count + " values, got " + values.length);
+    }
+    return Float64Array.from(values);
+  }
+
+  /* ---------------------------------------------------------------
+     Structured matrix
+     Rows 0..n-1 are SC nodes (tridiagonal + two wrap corners + border
+     column).  Row n exists only in constant-flow mode (the IOP row).
+     --------------------------------------------------------------- */
+  function newMatrix(n, hasBorder) {
+    return {
+      n: n,
+      border: !!hasBorder,
+      size: hasBorder ? n + 1 : n,
+      diag: new Float64Array(hasBorder ? n + 1 : n), // diag[n] == g[-1,-1]
+      lower: new Float64Array(n),                    // lower[i] = g[i][i-1]
+      upper: new Float64Array(n),                    // upper[i] = g[i][i+1]
+      cTR: 0.0,                                      // g[0][n-1]
+      cBL: 0.0,                                      // g[n-1][0]
+      col: new Float64Array(hasBorder ? n : 0),      // g[i][n]
+      row: new Float64Array(hasBorder ? n : 0)       // g[n][i]
+    };
+  }
+
+  function matrixGet(G, i, j) {
+    var n = G.n;
+    if (i < n && j < n) {
+      if (i === j) return G.diag[i];
+      if (j === i - 1) return G.lower[i];
+      if (j === i + 1) return G.upper[i];
+      if (i === 0 && j === n - 1) return G.cTR;
+      if (i === n - 1 && j === 0) return G.cBL;
+      return 0.0;
+    }
+    if (i < n && j === n) return G.col[i];
+    if (i === n && j < n) return G.row[j];
+    if (i === n && j === n) return G.diag[n];
+    return 0.0;
+  }
+
+  /* ---------------------------------------------------------------
+     Linear algebra
+     --------------------------------------------------------------- */
+
+  // Thomas algorithm for a plain tridiagonal system (no pivoting).
+  function thomas(low, dia, up, rhs) {
+    var n = dia.length;
+    var c = new Float64Array(n);
+    var d = new Float64Array(n);
+    var b0 = dia[0];
+    if (b0 === 0) return null;
+    c[0] = up[0] / b0;
+    d[0] = rhs[0] / b0;
+    for (var i = 1; i < n; i++) {
+      var m = dia[i] - low[i] * c[i - 1];
+      if (m === 0) return null;
+      c[i] = (i < n - 1 ? up[i] : 0) / m;
+      d[i] = (rhs[i] - low[i] * d[i - 1]) / m;
+    }
+    var x = new Float64Array(n);
+    x[n - 1] = d[n - 1];
+    for (var k = n - 2; k >= 0; k--) x[k] = d[k] - c[k] * x[k + 1];
+    return x;
+  }
+
+  // Cyclic tridiagonal solve (tridiagonal + corners cTR/cBL) for several
+  // right-hand sides, via Sherman-Morrison.
+  function cyclicSolver(G) {
+    var n = G.n;
+    var low = G.lower, up = G.upper;
+    var alpha = G.cBL;  // A[n-1][0]
+    var beta = G.cTR;   // A[0][n-1]
+    var plain = (alpha === 0 && beta === 0) || n < 3;
+
+    if (plain) {
+      var dia0 = new Float64Array(n);
+      for (var q = 0; q < n; q++) dia0[q] = G.diag[q];
+      return {
+        ok: true,
+        solve: function (rhs) { return thomas(low, dia0, up, rhs); }
+      };
+    }
+
+    var gamma = G.diag[0] !== 0 ? -G.diag[0] : 1.0;
+    var dia = new Float64Array(n);
+    for (var i = 0; i < n; i++) dia[i] = G.diag[i];
+    dia[0] = G.diag[0] - gamma;
+    dia[n - 1] = G.diag[n - 1] - alpha * beta / gamma;
+
+    var u = new Float64Array(n);
+    u[0] = gamma;
+    u[n - 1] = alpha;
+    var z = thomas(low, dia, up, u);
+    if (z === null) return { ok: false };
+    var denom = 1.0 + z[0] + (beta / gamma) * z[n - 1];
+    if (denom === 0 || !isFinite(denom)) return { ok: false };
+
+    return {
+      ok: true,
+      solve: function (rhs) {
+        var y = thomas(low, dia, up, rhs);
+        if (y === null) return null;
+        var fact = (y[0] + (beta / gamma) * y[n - 1]) / denom;
+        for (var k = 0; k < n; k++) y[k] -= fact * z[k];
+        return y;
+      }
+    };
+  }
+
+  // Dense Gaussian elimination with partial pivoting (fallback only).
+  function denseSolve(G, q) {
+    var size = G.size;
+    var a = new Float64Array(size * size);
+    for (var i = 0; i < size; i++) {
+      for (var j = 0; j < size; j++) a[i * size + j] = matrixGet(G, i, j);
+    }
+    var b = Float64Array.from(q);
+    for (var col = 0; col < size; col++) {
+      var piv = col, best = Math.abs(a[col * size + col]);
+      for (var r = col + 1; r < size; r++) {
+        var v = Math.abs(a[r * size + col]);
+        if (v > best) { best = v; piv = r; }
+      }
+      if (best === 0) return null;
+      if (piv !== col) {
+        for (var c2 = 0; c2 < size; c2++) {
+          var t = a[col * size + c2]; a[col * size + c2] = a[piv * size + c2]; a[piv * size + c2] = t;
+        }
+        var tb = b[col]; b[col] = b[piv]; b[piv] = tb;
+      }
+      var d = a[col * size + col];
+      for (var r2 = col + 1; r2 < size; r2++) {
+        var f = a[r2 * size + col] / d;
+        if (f === 0) continue;
+        for (var c3 = col; c3 < size; c3++) a[r2 * size + c3] -= f * a[col * size + c3];
+        b[r2] -= f * b[col];
+      }
+    }
+    var x = new Float64Array(size);
+    for (var k = size - 1; k >= 0; k--) {
+      var s = b[k];
+      for (var j2 = k + 1; j2 < size; j2++) s -= a[k * size + j2] * x[j2];
+      x[k] = s / a[k * size + k];
+    }
+    return x;
+  }
+
+  function allFinite(v) {
+    for (var i = 0; i < v.length; i++) if (!isFinite(v[i])) return false;
+    return true;
+  }
+
+  // Direct solve of the structured system (equivalent to scipy spsolve).
+  function directSolve(G, q) {
+    var n = G.n;
+    var solver = cyclicSolver(G);
+    var x = null;
+    if (solver.ok) {
+      if (!G.border) {
+        x = solver.solve(q);
+      } else {
+        var qt = q.subarray ? q.subarray(0, n) : q.slice(0, n);
+        var y1 = solver.solve(qt);
+        var y2 = solver.solve(G.col);
+        if (y1 && y2) {
+          var num = q[n], den = G.diag[n];
+          for (var i = 0; i < n; i++) {
+            num -= G.row[i] * y1[i];
+            den -= G.row[i] * y2[i];
+          }
+          var xl = num / den;
+          x = new Float64Array(n + 1);
+          for (var k = 0; k < n; k++) x[k] = y1[k] - xl * y2[k];
+          x[n] = xl;
+        }
+      }
+    }
+    if (x === null || !allFinite(x)) {
+      var fallback = denseSolve(G, q);
+      if (fallback !== null && allFinite(fallback)) return fallback;
+      if (x === null) throw new Error("Linear solve failed (singular system).");
+    }
+    return x;
+  }
+
+  // gauss_seidel.solve(a, b, x, n): x = inv(tril(a)) @ (b - triu(a,1) @ x)
+  function gaussSeidel(G, q, x0, sweeps) {
+    var n = G.n, size = G.size;
+    var x = Float64Array.from(x0);
+    for (var it = 0; it < sweeps; it++) {
+      for (var i = 0; i < n; i++) {
+        var s = 0.0;
+        if (i > 0) s += G.lower[i] * x[i - 1];
+        if (i < n - 1) s += G.upper[i] * x[i + 1];
+        if (i === 0 && G.cTR !== 0) s += G.cTR * x[n - 1];
+        if (i === n - 1 && G.cBL !== 0) s += G.cBL * x[0];
+        if (G.border) s += G.col[i] * x[n];
+        x[i] = (q[i] - s) / G.diag[i];
+      }
+      if (G.border) {
+        var sr = 0.0;
+        for (var j = 0; j < n; j++) sr += G.row[j] * x[j];
+        x[n] = (q[n] - sr) / G.diag[n];
+      }
+    }
+    return x;
+  }
+
+  /* ---------------------------------------------------------------
+     Model physics (solver.py)
+     --------------------------------------------------------------- */
+  function getRcc(iop) {
+    if (S.Rcc > 0.0) return S.Rcc;
+    if (iop <= 7) return 1.8;
+    if (iop >= 25) return 1.2;
+    return 2.033 - 0.033 * iop;
+  }
+
+  function getH(p, iop, node) {
+    var dp = (iop - S.Pev) - p;
+    var h;
+    if (S.Etm === 0.0 && dp === 0) {
+      h = S.h0[node];
+    } else if (S.Etm === 0.0) {
+      h = S.hs * cbrtSigned(S.Ks[node] / dp);
+    } else if (dp < S.Ks[node]) {
+      h = S.h0[node] * (1 - dp / S.Etm);
+    } else {
+      h = S.hs * cbrtSigned(S.Ks[node] / dp);
+    }
+    if (h > S.h0[node]) h = S.h0[node];
+    return h;
+  }
+
+  function getGsc(p, i, iop, geometry) {
+    var n = S.N * S.M;
+    var i1 = mod(i, n);
+    var i2 = mod(i + 1, n);
+    var h1 = getH(p[i1], iop, i1);
+    var h2 = getH(p[i2], iop, i2);
+    var segment = i1;
+    var gsc;
+    if (geometry === "rectangle") {
+      gsc = 1.0e-9 * W * (h1 * h1) * (h2 * h2) / (6 * MU * S.dx * (h1 + h2));
+    } else {
+      gsc = 1.0e-9 * Math.PI * W * (h1 * h1) * (h2 * h2) / (32 * MU * S.dx * (h1 + h2));
+    }
+    if (!isNaN(S.GscOverride[segment])) return S.GscOverride[segment];
+    return gsc * S.GscMultiplier[segment];
+  }
+
+  function guessIop(qt) {
+    return qt * (getRcc(7 + S.Pev) + S.overallRtm) + S.Pev;
+  }
+
+  function guessPressure(iop, qt, mode) {
+    var n = S.N * S.M;
+    if (mode === "constant pressure") {
+      var value = ((iop - S.Pev) / S.overallRtm) / (1 / getRcc(iop) + 1 / S.overallRtm);
+      return filled(n, value);
+    }
+    var iopGuess = guessIop(qt);
+    var p = new Float64Array(n + 1);
+    p.fill(qt * getRcc(iopGuess) - S.Pev, 0, n);
+    p[n] = iopGuess - S.Pev;
+    return p;
+  }
+
+  /* ---------------------------------------------------------------
+     Coefficient matrix (solver.get_g), transcribed statement by statement
+     --------------------------------------------------------------- */
+  function getG(p, iop, mode, geometry, trabeculotomies, sinusotomies, yagHoles, stents, ccs) {
+    var nodeCount = S.N * S.M;
+    var cf = (mode === "constant flow");
+    var g = newMatrix(nodeCount, cf);
+
+    for (var i = 0; i < nodeCount; i++) {
+      var gsc2 = getGsc(p, i, iop, geometry);
+      var gsc = getGsc(p, i - 1, iop, geometry);
+      var gcc = 0.0;
+      var gAdd = 0.0;
+
+      var tmRemoved = false;
+      var owRemoved = false;
+      var inlet = false;
+      var inletG = 0.0;
+      var spine = false;
+      var windowRegion = false;
+      var k, start, end, loc, stent, rel;
+
+      if (trabeculotomies) {
+        for (k = 0; k < trabeculotomies.length; k++) {
+          start = trabeculotomies[k][0]; end = trabeculotomies[k][1];
+          if (start <= i && i <= end) { tmRemoved = true; break; }
+          else if (i === mod(start - 1, nodeCount)) gAdd = gsc2;
+          else if (i === mod(end + 1, nodeCount)) gAdd = gsc;
+        }
+      }
+
+      if (sinusotomies) {
+        for (k = 0; k < sinusotomies.length; k++) {
+          start = sinusotomies[k][0]; end = sinusotomies[k][1];
+          if (start <= i && i <= end) { owRemoved = true; gsc = 0; gsc2 = 0; }
+        }
+      }
+
+      if (yagHoles) {
+        for (k = 0; k < yagHoles.length; k++) {
+          var hole = yagHoles[k];
+          if (hole - 1 <= i && i <= hole + 1) { tmRemoved = true; break; }
+          else if (i === mod(hole - 2, nodeCount)) gAdd = gsc2;
+          else if (i === mod(hole + 2, nodeCount)) gAdd = gsc;
+        }
+      }
+
+      if (stents) {
+        for (k = 0; k < stents.length; k++) {
+          loc = stents[k][0]; stent = stents[k][1];
+          if (loc < i && i < loc + stent.length) {
+            rel = i - loc;
+            if (stent.type(rel) === "inlet") {
+              inletG = stent.cond(rel);
+              if (stent.type(rel + 1) !== "inlet") gsc2 = stent.cond(rel + 1);
+              else gsc2 = 0;
+
+              if (stent.type(rel - 1) !== "inlet") {
+                gsc = stent.cond(rel - 1);
+                if (!stent.twoWay) gsc = 0;
+              } else {
+                gsc = 0;
+              }
+              inlet = true;
+            } else if (stent.type(rel) === "spine") {
+              gsc = stent.cond(rel);
+              if (stent.type(rel + 1) !== "inlet") {
+                gsc2 = stent.cond(rel + 1);
+              } else {
+                if (stent.twoWay) gsc2 = stent.cond(rel);
+                else gsc2 = 0;
+                if (stent.cond(rel + 1) <= 0) gAdd = gsc2;
+              }
+              if (stent.type(rel - 1) === "inlet") {
+                if (stent.cond(rel - 1) <= 0) gAdd = gsc;
+              }
+              spine = true;
+            } else if (stent.type(rel) === "window") {
+              gsc = stent.cond(rel);
+              if (stent.type(rel + 1) !== "inlet") {
+                gsc2 = stent.cond(rel + 1);
+              } else {
+                if (stent.twoWay) gsc2 = stent.cond(rel);
+                else gsc2 = 0;
+                if (stent.cond(rel + 1) <= 0) gAdd = gsc2;
+              }
+              windowRegion = true;
+            }
+            break;
+          } else if (i === loc) {
+            if (stent.type(0) === "inlet" && !stent.twoWay) {
+              gsc = 0; gsc2 = 0; inlet = true; inletG = stent.cond(0);
+            } else if (stent.type(0) !== "inlet") {
+              gsc2 = stent.cond(0);
+              gsc = stent.cond(0);
+              if (stent.type(0) === "spine") spine = true;
+              else windowRegion = true;
+            } else if (stent.type(0) === "inlet") {
+              inlet = true; inletG = stent.cond(0);
+            }
+            if (stent.type(1) === "inlet" && stent.cond(1) <= 0) gAdd = gsc2;
+            break;
+          } else if (i === mod(loc - 1, nodeCount)) {
+            if (stent.type(0) === "inlet" && !stent.twoWay) gsc2 = 0;
+            else if (stent.type(0) !== "inlet") gsc2 = stent.cond(0);
+            else { if (stent.cond(0) <= 0) gAdd = gsc2; }
+            break;
+          } else if (i === mod(loc + stent.length, nodeCount)) {
+            if (stent.type(-1) === "inlet" && !stent.twoWay) {
+              gsc = 0; gsc2 = 0; inlet = true; inletG = stent.cond(-1);
+            } else if (stent.type(-1) !== "inlet") {
+              gsc = stent.cond(-1);
+              gsc2 = stent.cond(-1);
+              if (stent.type(-1) === "spine") spine = true;
+              else windowRegion = true;
+            } else if (stent.type(-1) === "inlet") {
+              inlet = true;
+              inletG = stent.cond(-1);
+              if (stent.cond(-1) <= 0) gAdd = gsc2;
+            }
+            break;
+          } else if (i === mod(loc + stent.length + 1, nodeCount)) {
+            if (stent.type(-1) === "inlet" && !stent.twoWay) gsc = 0;
+            else if (stent.type(-1) !== "inlet") gsc = stent.cond(-1);
+            else { if (stent.cond(-1) <= 0) gAdd = gsc; }
+            break;
+          }
+        }
+      }
+
+      for (k = 0; k < ccs.length; k++) {
+        loc = ccs[k][0];
+        var gRatio = ccs[k][1];
+        if (i === loc) {
+          if (inlet || spine || windowRegion) {
+            gcc += S.beta * gRatio / (ccs.length * getRcc(iop));
+          } else if (!owRemoved) {
+            gcc += gRatio / (ccs.length * getRcc(iop));
+          }
+          break;
+        } else {
+          gcc = 0;
+        }
+        if (owRemoved) gcc = 1 / (ccs.length * getRcc(iop));
+      }
+
+      if (cf) {
+        var finiteInlet = inlet && inletG > 0;
+        if (finiteInlet) {
+          g.col[i] = inletG;
+          g.row[i] = -inletG - gAdd;
+          g.diag[nodeCount] += inletG + gAdd;
+          if (i === 0) { g.cTR = gsc; g.cBL = gsc; }
+          else if (i === nodeCount - 1) { g.cBL = 0; }
+        } else if (!tmRemoved && !owRemoved && !spine && !inlet) {
+          g.col[i] = 1 / S.Rtm[i];
+          g.row[i] = -1 / S.Rtm[i] - gAdd;
+          g.diag[nodeCount] += 1 / S.Rtm[i] + gAdd;
+          if (i === 0) { g.cTR = gsc; g.cBL = gsc; }
+        } else if (tmRemoved) {
+          g.diag[nodeCount] += gcc;
+          g.diag[i] = -1.0;
+          g.col[i] = 1.0;
+          if (i === 0) { g.cBL = gsc; }
+          else if (i === nodeCount - 1) { g.cBL = 0; }
+        } else if (owRemoved) {
+          g.diag[nodeCount] += 1 / S.Rtm[i];
+          g.diag[i] = 1.0;
+          g.row[i] = -1 / S.Rtm[i];
+          g.col[i] = 0;
+        } else if (inlet) {
+          g.col[i] = -1.0;
+          if (i === 0) { g.cBL = gsc; }
+          else if (i === nodeCount - 1) { g.cBL = 0; }
+        } else if (spine) {
+          g.diag[nodeCount] += gAdd;
+          g.row[i] = -gAdd;
+          if (i === 0) { g.cTR = gsc; g.cBL = gsc; }
+        }
+      } else {
+        if (!tmRemoved && !owRemoved && i === 0) {
+          g.cBL = gsc;
+          g.cTR = gsc;
+        } else if (tmRemoved) {
+          g.diag[i] = 1.0;
+          if (i === 0) g.cBL = gsc;
+          else if (i === nodeCount - 1) g.cBL = 0;
+        } else if (owRemoved) {
+          g.diag[i] = 1.0;
+        }
+      }
+
+      if (inlet && inletG > 0) {
+        g.diag[i] = -(inletG + gsc + gsc2 + gcc);
+        if (i > 0) g.lower[i] = gsc;
+        if (i + 1 < nodeCount) g.upper[i] = gsc2;
+      } else if (!tmRemoved && !owRemoved && !spine && !inlet) {
+        if (!isFinite(S.Rtm[i]) && gsc === 0 && gsc2 === 0 && gcc === 0) {
+          g.diag[i] = -1.0;
+        } else {
+          g.diag[i] = -(1 / S.Rtm[i] + gsc + gsc2 + gcc);
+          if (i > 0) g.lower[i] = gsc;
+          if (i + 1 < nodeCount) g.upper[i] = gsc2;
+        }
+      } else if (spine) {
+        g.diag[i] = -(gsc + gsc2 + gcc);
+        if (i > 0) g.lower[i] = gsc;
+        if (i + 1 < nodeCount) g.upper[i] = gsc2;
+      } else if (inlet) {
+        g.diag[i] = 1.0;
+      }
+    }
+
+    return g;
+  }
+
+  /* ---------------------------------------------------------------
+     solver.solve
+     --------------------------------------------------------------- */
+  function solve(opts) {
+    var mode = opts.mode || "constant pressure";
+    var geometry = opts.geometry || "ellipse";
+    var iop = opts.iop === undefined ? 7.0 : opts.iop;
+    var qt = opts.qt === undefined ? 2.0 : opts.qt;
+    var maxError = opts.max_error === undefined ? 1e-4 : opts.max_error;
+    var maxIter = opts.max_iter === undefined ? 200 : opts.max_iter;
+    var variableRtm = !!opts.variable_rtm;
+    var variableH0 = !!opts.variable_h0;
+    var unconventional = !!opts.unconventional;
+    var trabeculotomies = opts.trabeculotomies || null;
+    var sinusotomies = opts.sinusotomies || null;
+    var yagHoles = opts.yag_holes || null;
+    var stents = opts.stents || null;
+    var ccs = opts.ccs || null;
+    var guess = opts.guess || null;
+
+    S.N = 30;
+    S.M = 40;
+    S.Etm = 13.0;
+    if (!variableH0) S.h0 = filled(S.N * S.M, 20.0);
+    if (!variableRtm) S.Rtm = filled(S.N * S.M, 2.0 * S.N * S.M);
+    S.hs = 3.0;
+    S.beta = 1.0;
+    S.Rcc = 0;
+    S.GscMultiplier = filled(S.N * S.M, 1.0);
+    S.GscOverride = filled(S.N * S.M, NaN);
+    S.Pev = 0.0;
+    S.Qu = unconventional ? 0.28 : 0.0;
+
+    // Keyword arguments are applied in insertion order, exactly like the
+    // Python `for kw in kwargs` loop: N and M may still be at their defaults
+    // when h0 is expanded, which is the behaviour the reference relies on.
+    var kw = opts.kwargs || {};
+    var keys = Object.keys(kw);
+    for (var ki = 0; ki < keys.length; ki++) {
+      var key = keys[ki];
+      var val = kw[key];
+      if (val === undefined || val === null) continue;
+      if (key === "n") S.N = Math.trunc(val);
+      else if (key === "m") S.M = Math.trunc(val);
+      else if (key === "etm") S.Etm = Number(val);
+      else if (key === "h0") {
+        if (!variableH0) S.h0 = filled(S.N * S.M, Number(val));
+        else S.h0 = Float64Array.from(val);
+      } else if (key === "rtm") {
+        if (!variableRtm) S.Rtm = filled(S.N * S.M, Number(val) * S.N * S.M);
+        else S.Rtm = Float64Array.from(val);
+      } else if (key === "hs") S.hs = Number(val);
+      else if (key === "beta") S.beta = Number(val);
+      else if (key === "rcc") S.Rcc = Number(val);
+      else if (key === "gsc_multiplier") S.GscMultiplier = expandNetworkParam(val, S.N * S.M, 1.0, false);
+      else if (key === "gsc_override") S.GscOverride = expandNetworkParam(val, S.N * S.M, NaN, true);
+      else if (key === "pev") S.Pev = Number(val);
+      else if (key === "qu" && unconventional) S.Qu = Number(val);
+    }
+
+    var n = S.N * S.M;
+    S.dx = XCC / S.M;
+
+    S.Ks = new Float64Array(S.h0.length);
+    for (var a = 0; a < S.h0.length; a++) S.Ks[a] = S.Etm * (1 - S.hs / S.h0[a]);
+
+    var inv = 0.0;
+    for (var b = 0; b < S.Rtm.length; b++) inv += 1 / S.Rtm[b];
+    S.overallRtm = 1 / inv;
+
+    if (!ccs) {
+      ccs = [];
+      for (var c = 0; c < n; c += S.M) ccs.push([c, 1.0]);
+    }
+
+    var pressure, g = null, q, i, k;
+
+    if (mode === "no sc resistance") {
+      var value = (iop / S.overallRtm + S.Pev / getRcc(iop)) / (1 / getRcc(iop) + 1 / S.overallRtm);
+      return { pressure: filled(1, value + S.Pev), ccs: ccs };
+    }
+
+    var residual = maxError + 1;
+    var j = 1;
+    if (!guess || guess.length !== n) pressure = guessPressure(iop, qt, mode);
+    else pressure = Float64Array.from(guess);
+
+    if (mode === "constant pressure") {
+      if (iop < S.Pev) throw new Error("IOP must be greater than episcleral venous pressure");
+      q = new Float64Array(n);
+      for (i = 0; i < n; i++) q[i] = -(iop - S.Pev) / S.Rtm[i];
+
+      if (trabeculotomies) {
+        for (k = 0; k < trabeculotomies.length; k++) {
+          sliceAssign(q, trabeculotomies[k][0], trabeculotomies[k][1] + 1, iop - S.Pev);
+        }
+      }
+      if (sinusotomies) {
+        for (k = 0; k < sinusotomies.length; k++) {
+          sliceAssign(q, sinusotomies[k][0], sinusotomies[k][1] + 1, -S.Pev);
+        }
+      }
+      if (yagHoles) {
+        for (k = 0; k < yagHoles.length; k++) {
+          sliceAssign(q, yagHoles[k] - 1, yagHoles[k] + 2, iop - S.Pev);
+        }
+      }
+      if (stents) {
+        for (k = 0; k < stents.length; k++) {
+          var sLoc = stents[k][0], sObj = stents[k][1];
+          var idx;
+          for (idx = 0; idx < sObj.size; idx++) {
+            if (sObj.type(idx) === "inlet") {
+              var node = mod(idx + sLoc, n);
+              var ig = sObj.cond(idx);
+              q[node] = ig > 0 ? -(iop - S.Pev) * ig : iop - S.Pev;
+            }
+          }
+          for (idx = 0; idx < sObj.size; idx++) {
+            if (sObj.type(idx) === "spine") {
+              var target = idx + sLoc;
+              if (target >= n) throw new Error("Stent spine index " + target + " is outside the SC node range.");
+              q[target] = 0.0;
+            }
+          }
+        }
+      }
+    } else {
+      if (unconventional) qt = qt - S.Qu;
+      q = new Float64Array(n + 1);
+      q[n] = qt;
+      iop = pressure[n] + S.Pev;
+      if (sinusotomies) {
+        for (k = 0; k < sinusotomies.length; k++) {
+          sliceAssign(q, sinusotomies[k][0], sinusotomies[k][1] + 1, -S.Pev);
+        }
+      }
+    }
+
+    while (residual > maxError && j <= maxIter) {
+      if (mode === "constant flow") iop = pressure[n] + S.Pev;
+
+      g = getG(pressure, iop, mode, geometry, trabeculotomies, sinusotomies, yagHoles, stents, ccs);
+
+      var newPressure;
+      if (j <= 30) newPressure = directSolve(g, q);
+      else newPressure = gaussSeidel(g, q, pressure, 10);
+
+      var acc = 0.0;
+      for (i = 0; i < newPressure.length; i++) {
+        var d = newPressure[i] - pressure[i];
+        acc += d * d;
+      }
+      residual = Math.sqrt(acc / newPressure.length) / (iop - S.Pev);
+      pressure = newPressure;
+      j += 1;
+    }
+
+    var out = new Float64Array(pressure.length);
+    for (i = 0; i < pressure.length; i++) out[i] = pressure[i] + S.Pev;
+    return { pressure: out, ccs: ccs, iterations: j - 1, residual: residual };
+  }
+
+  /* ---------------------------------------------------------------
+     Stent (solver.Stent)
+     --------------------------------------------------------------- */
+  function Stent(cfg) {
+    var dx = S.dx; // module-global dx, exactly as in the Python class
+    var name = cfg.name || "Generic Stent";
+    var geometry = cfg.geometry || "ellipse";
+    var lBefore = cfg.l_before === null || cfg.l_before === undefined ? 0 : Math.trunc(cfg.l_before);
+    var lAfter = cfg.l_after === null || cfg.l_after === undefined ? 0 : Math.trunc(cfg.l_after);
+    if (cfg.l_before === null || cfg.l_before === undefined) lBefore = lAfter;
+
+    var length = Math.trunc(cfg.length / dx);
+    var locInlet = Math.trunc(cfg.loc_inlet / dx);
+    var conds = new Float64Array(length + 1);
+    var types = new Array(length + 1);
+    for (var z = 0; z <= length; z++) types[z] = "";
+    var heights = new Float64Array(length + 1);
+
+    conds[locInlet] = cfg.g_inlet === null || cfg.g_inlet === undefined ? 0.0 : Number(cfg.g_inlet);
+    types[locInlet] = "inlet";
+
+    var w = Number(cfg.w);
+    var hAfter = cfg.h_after === null || cfg.h_after === undefined ? null : Number(cfg.h_after);
+    var i, gAfter;
+    var nWindows = cfg.n_windows ? Math.trunc(cfg.n_windows) : 0;
+
+    if (nWindows > 0) {
+      if (cfg.l_window === null || cfg.l_window === undefined) throw new Error("l_window must be specified if n_windows > 0");
+      if (cfg.h_window === null || cfg.h_window === undefined) throw new Error("h_window must be specified if n_windows > 0");
+      if (cfg.h_spine === null || cfg.h_spine === undefined) throw new Error("h_spine must be specified if n_windows > 0");
+      if (cfg.l_spine === null || cfg.l_spine === undefined) throw new Error("l_spine must be specified if n_windows > 0");
+
+      var hWindow = Number(cfg.h_window), hSpine = Number(cfg.h_spine);
+      var gWindow, gSpine;
+      if (geometry === "ellipse") {
+        gWindow = 1.0e-9 * Math.PI * w * Math.pow(hWindow, 3.0) / (64 * MU * dx);
+        gSpine = 1.0e-9 * Math.PI * w * Math.pow(hSpine, 3.0) / (64 * MU * dx);
+      } else if (geometry === "rectangle") {
+        gWindow = 1.0e-9 * w * Math.pow(hWindow, 3.0) / (12 * MU * dx);
+        gSpine = 1.0e-9 * w * Math.pow(hSpine, 3.0) / (12 * MU * dx);
+      } else {
+        throw new Error("Unsupported geometry: " + geometry);
+      }
+
+      heights[locInlet] = Math.max(hWindow, hSpine);
+
+      var windowLen = Math.trunc(Number(cfg.l_window) / dx);
+      var spineLen = Math.trunc(Number(cfg.l_spine) / dx);
+      var inWindow = false, windowCount = 0, tracker = 0;
+      for (i = 0; i < types.length; i++) {
+        if (types[i] === "inlet") continue;
+        if (inWindow && windowCount < nWindows) {
+          conds[i] = gWindow; types[i] = "window"; heights[i] = hWindow;
+          tracker += 1;
+          if (tracker >= windowLen) { inWindow = false; tracker = 0; windowCount += 1; }
+        } else {
+          conds[i] = gSpine; types[i] = "spine"; heights[i] = hSpine;
+          tracker += 1;
+          if (tracker >= spineLen) { inWindow = true; tracker = 0; }
+        }
+      }
+
+      if (hAfter === null) hAfter = hSpine;
+      gAfter = geometry === "ellipse"
+        ? 1.0e-9 * Math.PI * W * Math.pow(hAfter, 3.0) / (64 * MU * dx)
+        : 1.0e-9 * W * Math.pow(hAfter, 3.0) / (12 * MU * dx);
+    } else {
+      if (cfg.hd === null || cfg.hd === undefined) throw new Error("hd must be specified if n_windows=0");
+      var hd = Number(cfg.hd);
+      var gStent;
+      if (geometry === "ellipse") gStent = 1.0e-9 * Math.PI * w * Math.pow(hd, 3.0) / (64 * MU * dx);
+      else if (geometry === "rectangle") gStent = 1.0e-9 * w * Math.pow(hd, 3.0) / (12 * MU * dx);
+      else throw new Error("Unsupported geometry: " + geometry);
+
+      heights.fill(hd);
+      for (i = 0; i < types.length; i++) {
+        if (types[i] === "inlet") continue;
+        conds[i] = gStent; types[i] = "spine";
+      }
+
+      if (hAfter === null) hAfter = hd;
+      gAfter = geometry === "ellipse"
+        ? 1.0e-9 * Math.PI * W * Math.pow(hAfter, 3.0) / (64 * MU * dx)
+        : 1.0e-9 * W * Math.pow(hAfter, 3.0) / (12 * MU * dx);
+    }
+
+    // append l_after entries, then prepend l_before entries
+    var condList = Array.prototype.slice.call(conds);
+    var typeList = types.slice();
+    var heightList = Array.prototype.slice.call(heights);
+    for (i = 0; i < lAfter; i++) { condList.push(gAfter); typeList.push("window"); heightList.push(hAfter); }
+    for (i = 0; i < lBefore; i++) { condList.unshift(gAfter); typeList.unshift("window"); heightList.unshift(hAfter); }
+    locInlet += lBefore;
+
+    this._cond = condList;
+    this._type = typeList;
+    this.h = heightList;
+    this.size = condList.length;      // len(self.g)
+    this.length = condList.length - 1; // len(stent)
+    this.locInlet = locInlet;
+    this.twoWay = !!cfg.two_way;
+    this.name = name;
+  }
+  Stent.prototype.cond = function (k) {
+    if (k < 0) k += this.size;
+    return this._cond[k];
+  };
+  Stent.prototype.type = function (k) {
+    if (k < 0) k += this.size;
+    return this._type[k];
+  };
+
+  /* ---------------------------------------------------------------
+     outputs_trial.solve_cp / solve_cf
+     --------------------------------------------------------------- */
+  function solveCP(iop, opts) {
+    iop = Number(iop);
+    var kw = opts.kwargs || {};
+    var result = solve({
+      iop: iop,
+      mode: "constant pressure",
+      geometry: opts.geometry,
+      variable_rtm: opts.variable_rtm,
+      variable_h0: opts.variable_h0,
+      trabeculotomies: opts.trabeculotomies,
+      sinusotomies: opts.sinusotomies,
+      yag_holes: opts.yag_holes,
+      stents: opts.stents,
+      ccs: opts.ccs,
+      guess: opts.guess,
+      max_error: opts.max_error,
+      kwargs: kw
+    });
+    var pressure = result.pressure;
+
+    var beta = 1.0, Pev = 0.0, M = 40, Qu = 0.0;
+    if (opts.unconventional) Qu = 0.28;
+    if (kw.beta !== undefined && kw.beta !== null) beta = Number(kw.beta);
+    if (kw.pev !== undefined && kw.pev !== null) Pev = Number(kw.pev);
+    if (kw.qu !== undefined && kw.qu !== null && opts.unconventional) Qu = Number(kw.qu);
+    if (kw.m !== undefined && kw.m !== null) M = Math.trunc(kw.m);
+
+    var ccs = opts.ccs;
+    if (!ccs) {
+      ccs = [];
+      for (var c = 0; c < pressure.length; c += M) ccs.push([c, 1.0]);
+    }
+
+    var qt = 0.0, i, k;
+    var hasStent = new Uint8Array(pressure.length);
+    if (opts.stents) {
+      for (k = 0; k < opts.stents.length; k++) {
+        var loc = opts.stents[k][0], stent = opts.stents[k][1];
+        for (i = loc; i < loc + stent.length; i++) if (i < hasStent.length) hasStent[i] = 1;
+      }
+    }
+
+    var noOw = new Uint8Array(pressure.length);
+    if (opts.sinusotomies) {
+      for (k = 0; k < opts.sinusotomies.length; k++) {
+        var start = opts.sinusotomies[k][0], end = opts.sinusotomies[k][1];
+        for (i = start; i <= end && i < pressure.length; i++) {
+          qt += (iop - pressure[i]) * S.Rtm[i];
+        }
+        qt += (pressure[start - 1] - pressure[start]) * getGsc(pressure, start - 1, iop, "ellipse");
+        if (end + 1 >= pressure.length) throw new Error("Sinusotomy range ends at the last SC node; the reference model cannot evaluate it.");
+        qt += (pressure[end + 1] - pressure[end]) * getGsc(pressure, end, iop, "ellipse");
+        for (i = start; i <= end && i < pressure.length; i++) noOw[i] = 1;
+      }
+    }
+
+    var ccFlow = new Float64Array(ccs.length);
+    for (k = 0; k < ccs.length; k++) {
+      var cloc = Math.trunc(ccs[k][0]);
+      var ratio = ccs[k][1];
+      if (!hasStent[cloc] && !noOw[cloc]) {
+        ccFlow[k] = (pressure[cloc] - Pev) * ratio / (ccs.length * getRcc(iop));
+        qt += ccFlow[k];
+      } else if (!noOw[cloc]) {
+        ccFlow[k] = beta * (pressure[cloc] - Pev) * ratio / (ccs.length * getRcc(iop));
+        qt += ccFlow[k];
+      }
+    }
+
+    var rt = (iop - Pev) / qt;
+    var ct = qt / (iop - Pev);
+    if (opts.unconventional) {
+      rt = 1 / (Qu / iop + qt / (iop - Pev));
+      ct += Qu / iop;
+      qt += Qu;
+    }
+
+    return { pressure: pressure, iop: iop, flowrate: qt, resistance: rt, facility: ct, jcc: ccFlow, ccs: ccs };
+  }
+
+  function solveCF(qt, opts) {
+    qt = Number(qt);
+    var kw = opts.kwargs || {};
+    var ccs = opts.ccs;
+    if (!ccs) {
+      // The Python reference hard-codes range(0, 1200, 40) here, which breaks
+      // for any N/M other than 30/40.  Derive it from N and M instead.
+      var nn = (kw.n !== undefined && kw.n !== null ? Math.trunc(kw.n) : 30);
+      var mm = (kw.m !== undefined && kw.m !== null ? Math.trunc(kw.m) : 40);
+      ccs = [];
+      for (var c = 0; c < nn * mm; c += mm) ccs.push([c, 1.0]);
+    }
+
+    var beta = 1.0, Pev = 0.0, Qu = 0.0;
+    if (opts.unconventional) Qu = 0.28;
+    if (kw.beta !== undefined && kw.beta !== null) beta = Number(kw.beta);
+    if (kw.pev !== undefined && kw.pev !== null) Pev = Number(kw.pev);
+    if (kw.qu !== undefined && kw.qu !== null && opts.unconventional) Qu = Number(kw.qu);
+
+    var result = solve({
+      qt: qt,
+      mode: "constant flow",
+      geometry: opts.geometry,
+      unconventional: opts.unconventional,
+      variable_rtm: opts.variable_rtm,
+      variable_h0: opts.variable_h0,
+      trabeculotomies: opts.trabeculotomies,
+      sinusotomies: opts.sinusotomies,
+      yag_holes: opts.yag_holes,
+      stents: opts.stents,
+      ccs: ccs,
+      guess: opts.guess,
+      max_error: opts.max_error,
+      kwargs: kw
+    });
+
+    var full = result.pressure;
+    var iop = full[full.length - 1];
+    var pressure = full.subarray(0, full.length - 1);
+    var rt = (iop - Pev) / qt;
+    var ct = qt / (iop - Pev);
+    if (opts.unconventional) {
+      rt = 1 / (Qu / iop + qt / (iop - Pev));
+      ct += Qu / iop;
+    }
+
+    var total = S.N * S.M, i, k;
+    var hasStent = new Uint8Array(total);
+    if (opts.stents) {
+      for (k = 0; k < opts.stents.length; k++) {
+        var loc = opts.stents[k][0], stent = opts.stents[k][1];
+        for (i = loc; i < loc + stent.length; i++) {
+          if (i >= total) throw new Error("Stent at node " + loc + " extends past the end of Schlemm's canal.");
+          hasStent[i] = 1;
+        }
+      }
+    }
+    var noOw = new Uint8Array(total);
+    if (opts.sinusotomies) {
+      for (k = 0; k < opts.sinusotomies.length; k++) {
+        for (i = opts.sinusotomies[k][0]; i <= opts.sinusotomies[k][1] && i < total; i++) noOw[i] = 1;
+      }
+    }
+
+    var ccFlow = new Float64Array(ccs.length);
+    for (k = 0; k < ccs.length; k++) {
+      var cloc = Math.trunc(ccs[k][0]);
+      var ratio = ccs[k][1];
+      if (!hasStent[cloc] && !noOw[cloc]) {
+        ccFlow[k] = (pressure[cloc] - Pev) * ratio / (ccs.length * getRcc(iop));
+      } else if (!noOw[cloc]) {
+        ccFlow[k] = beta * (pressure[cloc] - Pev) * ratio / (ccs.length * getRcc(iop));
+      }
+    }
+
+    return { pressure: pressure, iop: iop, flowrate: qt, resistance: rt, facility: ct, jcc: ccFlow, ccs: ccs };
+  }
+
+  function solveTrabeculotomy(iop, qt, hours, opts) {
+    var trabeculotomies = opts.trabeculotomies || null;
+    if (trabeculotomies) {
+      hours = false;
+    } else if (hours === 0) {
+      trabeculotomies = null;
+    } else if (hours === 1) {
+      trabeculotomies = [[550, 650]];
+    } else if (hours === 4) {
+      trabeculotomies = [[100, 200], [400, 500], [700, 800], [1000, 1100]];
+    } else if (hours === 12) {
+      trabeculotomies = [[0, 1199]];
+    } else if (hours > 12) {
+      throw new Error("Hours must be <= 12");
+    }
+    var next = Object.assign({}, opts, { trabeculotomies: trabeculotomies });
+    if (opts.mode === "constant flow") return solveCF(qt, next);
+    return solveCP(iop, next);
+  }
+
+  function solveYagHoles(qt, iop, count, holes, opts) {
+    if (holes && holes.length > 0) {
+      count = null;
+    } else if (count === 0) {
+      holes = null;
+    } else if (count === 1) holes = [600];
+    else if (count === 2) holes = [300, 900];
+    else if (count === 3) holes = [200, 600, 1000];
+    else if (count === 4) holes = [150, 450, 750, 1050];
+    else if (count === 5) holes = [120, 360, 600, 840, 1080];
+    else if (count === 6) holes = [100, 300, 500, 700, 900, 1100];
+    else throw new Error("Invalid value of n. Use explicit hole nodes for more than 6 holes.");
+
+    var next = Object.assign({}, opts, { yag_holes: holes });
+    if (opts.mode === "constant pressure") return solveCP(iop, next);
+    return solveCF(qt, next);
+  }
+
+  /* ---------------------------------------------------------------
+     Input parsing (local_web_calculator.py)
+     --------------------------------------------------------------- */
+  function isBlank(text) {
+    return text === null || text === undefined || String(text).trim() === "";
+  }
+
+  function toFloat(text, label) {
+    var value = Number(String(text).trim());
+    if (!isFinite(value)) {
+      throw new Error("Could not read a number from \"" + String(text).trim() + "\"" + (label ? " in " + label : "") + ".");
+    }
+    return value;
+  }
+
+  function toInt(text, label) { return Math.trunc(toFloat(text, label)); }
+
+  function finiteFloat(value, def) {
+    if (value === "" || value === null || value === undefined) return def;
+    return toFloat(value);
+  }
+
+  function finiteInt(value, def) {
+    if (value === "" || value === null || value === undefined) return def;
+    return Math.trunc(toFloat(value));
+  }
+
+  function finiteBool(value, def) {
+    if (value === "" || value === null || value === undefined) return def;
+    if (typeof value === "boolean") return value;
+    return ["1", "true", "yes", "on"].indexOf(String(value).trim().toLowerCase()) >= 0;
+  }
+
+  function splitChunks(text) {
+    return String(text).replace(/;/g, ",").replace(/\n/g, ",").split(",")
+      .map(function (part) { return part.trim(); })
+      .filter(function (part) { return part.length > 0; });
+  }
+
+  function parseRanges(text) {
+    if (isBlank(text)) return [];
+    var ranges = [];
+    var chunks = String(text).replace(/;/g, ",").split(",");
+    for (var i = 0; i < chunks.length; i++) {
+      var part = chunks[i].trim();
+      if (!part) continue;
+      var start, end, bits;
+      if (part.indexOf("-") >= 0) {
+        bits = part.split("-");
+        start = toInt(bits[0], "range"); end = toInt(bits.slice(1).join("-"), "range");
+      } else if (part.indexOf(":") >= 0) {
+        bits = part.split(":");
+        start = toInt(bits[0], "range"); end = toInt(bits.slice(1).join(":"), "range");
+      } else {
+        start = end = toInt(part, "range");
+      }
+      if (end < start) { var t = start; start = end; end = t; }
+      ranges.push([start, end]);
+    }
+    return ranges;
+  }
+
+  function parseIntList(text) {
+    if (isBlank(text)) return [];
+    return String(text).replace(/;/g, ",").split(",")
+      .map(function (p) { return p.trim(); })
+      .filter(function (p) { return p.length > 0; })
+      .map(function (p) { return toInt(p, "node list"); });
+  }
+
+  function parseCcs(text, maxNodes) {
+    if (isBlank(text)) return null;
+    var ccs = [];
+    var chunks = String(text).replace(/;/g, ",").split(",");
+    for (var i = 0; i < chunks.length; i++) {
+      var part = chunks[i].trim();
+      if (!part) continue;
+      var locText = part, ratioText = "1", idx;
+      if ((idx = part.indexOf(":")) >= 0) {
+        locText = part.slice(0, idx); ratioText = part.slice(idx + 1);
+      } else if ((idx = part.indexOf("=")) >= 0) {
+        locText = part.slice(0, idx); ratioText = part.slice(idx + 1);
+      }
+      var loc = toInt(locText, "collector channels");
+      var ratio = toFloat(ratioText, "collector channels");
+      if (loc < 0) throw new Error("Collector channel node indexes must be non-negative.");
+      if (maxNodes !== null && maxNodes !== undefined && loc >= maxNodes) {
+        throw new Error("Collector channel node " + loc + " is outside the current 0-" + (maxNodes - 1) + " node range.");
+      }
+      if (ratio <= 0) throw new Error("Collector channel conductance multipliers must be greater than zero.");
+      ccs.push([loc, ratio]);
+    }
+    return ccs.length ? ccs : null;
+  }
+
+  function parseSegmentProfile(text, expectedCount, label, allowZero) {
+    if (isBlank(text)) return null;
+    var chunks = splitChunks(text);
+    if (!chunks.length) return null;
+
+    var keyed = chunks.some(function (c) { return c.indexOf(":") >= 0 || c.indexOf("=") >= 0; });
+    var values = new Array(expectedCount).fill(null);
+    var comparator = allowZero ? "zero or greater" : "greater than zero";
+    var i, value;
+
+    if (keyed) {
+      for (i = 0; i < chunks.length; i++) {
+        var chunk = chunks[i], sep = chunk.indexOf(":") >= 0 ? ":" : (chunk.indexOf("=") >= 0 ? "=" : null);
+        if (!sep) throw new Error(label + " profile mixes keyed and unkeyed values.");
+        var at = chunk.indexOf(sep);
+        var idx = toInt(chunk.slice(0, at), label);
+        if (idx < 1 || idx > expectedCount) {
+          throw new Error(label + " segment " + idx + " is outside the valid 1-" + expectedCount + " range.");
+        }
+        value = toFloat(chunk.slice(at + 1), label);
+        if (value < 0 || (!allowZero && value === 0)) throw new Error(label + " values must be " + comparator + ".");
+        values[idx - 1] = value;
+      }
+      var missing = [];
+      for (i = 0; i < expectedCount; i++) if (values[i] === null) missing.push(String(i + 1));
+      if (missing.length) throw new Error(label + " profile is missing segment(s): " + missing.join(", ") + ".");
+      return values;
+    }
+
+    var raw = chunks.map(function (c) { return toFloat(c, label); });
+    for (i = 0; i < raw.length; i++) {
+      if (raw[i] < 0 || (!allowZero && raw[i] === 0)) throw new Error(label + " values must be " + comparator + ".");
+    }
+    if (raw.length === 1) return new Array(expectedCount).fill(raw[0]);
+    if (raw.length === expectedCount) return raw;
+    throw new Error(label + " profile needs either 1 value or exactly " + expectedCount + " values; got " + raw.length + ".");
+  }
+
+  function expandTmProfile(values, totalNodes) {
+    var expanded = new Float64Array(totalNodes);
+    var count = values.length;
+    for (var idx = 0; idx < count; idx++) {
+      var start = Math.round(idx * totalNodes / count);
+      var end = Math.round((idx + 1) * totalNodes / count);
+      var segLen = Math.max(1, end - start);
+      for (var i = start; i < end; i++) expanded[i] = values[idx] * segLen;
+    }
+    return expanded;
+  }
+
+  function expandScProfile(values, totalNodes) {
+    var expanded = new Float64Array(totalNodes);
+    var count = values.length;
+    for (var idx = 0; idx < count; idx++) {
+      var start = Math.round(idx * totalNodes / count);
+      var end = Math.round((idx + 1) * totalNodes / count);
+      for (var i = start; i < end; i++) expanded[i] = values[idx];
+    }
+    return expanded;
+  }
+
+  function parseNodeValueOverrides(text, maxNodes, label, allowZero) {
+    if (isBlank(text)) return [];
+    var overrides = [];
+    var chunks = splitChunks(text);
+    var comparator = allowZero ? "zero or greater" : "greater than zero";
+    for (var i = 0; i < chunks.length; i++) {
+      var part = chunks[i], sep = part.indexOf(":") >= 0 ? ":" : (part.indexOf("=") >= 0 ? "=" : null);
+      if (!sep) throw new Error(label + " overrides must use node:value or start-end:value format.");
+      var at = part.indexOf(sep);
+      var rangeText = part.slice(0, at).trim();
+      var value = toFloat(part.slice(at + 1), label);
+      if (value < 0 || (!allowZero && value === 0)) throw new Error(label + " override values must be " + comparator + ".");
+      var start, end;
+      if (rangeText.indexOf("-") >= 0) {
+        var bits = rangeText.split("-");
+        start = toInt(bits[0], label); end = toInt(bits.slice(1).join("-"), label);
+      } else {
+        start = end = toInt(rangeText, label);
+      }
+      if (end < start) { var t = start; start = end; end = t; }
+      if (start < 0 || end < 0) throw new Error(label + " override node indexes must be non-negative.");
+      if (maxNodes !== null && maxNodes !== undefined && end >= maxNodes) {
+        throw new Error(label + " override " + start + "-" + end + " is outside the current 0-" + (maxNodes - 1) + " node range.");
+      }
+      overrides.push([start, end, value]);
+    }
+    return overrides;
+  }
+
+  function applyNodeValueOverrides(base, overrides) {
+    var values = Float64Array.from(base);
+    for (var i = 0; i < overrides.length; i++) {
+      for (var j = overrides[i][0]; j <= overrides[i][1] && j < values.length; j++) values[j] = overrides[i][2];
+    }
+    return values;
+  }
+
+  function parseFullValueArray(text, expectedCount, label, allowZero) {
+    if (isBlank(text)) return null;
+    var chunks = splitChunks(text);
+    var values = [];
+    var comparator = allowZero ? "zero or greater" : "greater than zero";
+    for (var i = 0; i < chunks.length; i++) {
+      var value = toFloat(chunks[i], label);
+      if (value < 0 || (!allowZero && value === 0)) throw new Error(label + " values must be " + comparator + ".");
+      values.push(value);
+    }
+    if (!values.length) return null;
+    if (values.length === 1) return Float64Array.from(new Array(expectedCount).fill(values[0]));
+    if (values.length !== expectedCount) {
+      throw new Error(label + " needs either 1 value or exactly " + expectedCount + " values; got " + values.length + ".");
+    }
+    return Float64Array.from(values);
+  }
+
+  function parseValueArrayOrOverrides(text, expectedCount, label, allowZero) {
+    if (isBlank(text)) return { values: null, overrides: [] };
+    var chunks = splitChunks(text);
+    var keyed = chunks.some(function (c) { return c.indexOf(":") >= 0 || c.indexOf("=") >= 0; });
+    if (keyed) return { values: null, overrides: parseNodeValueOverrides(text, expectedCount, label, allowZero) };
+    return { values: parseFullValueArray(text, expectedCount, label, allowZero), overrides: [] };
+  }
+
+  function stentFromPayload(payload) {
+    return new Stent({
+      name: payload.stent_name ? String(payload.stent_name) : "Custom stent",
+      length: finiteFloat(payload.stent_length, 1000.0),
+      loc_inlet: finiteFloat(payload.stent_loc_inlet, 0.0),
+      w: finiteFloat(payload.stent_width, 120.0),
+      hd: finiteFloat(payload.stent_height, 60.0),
+      n_windows: finiteInt(payload.stent_n_windows, 0) || 0,
+      l_window: finiteFloat(payload.stent_l_window, null),
+      h_window: finiteFloat(payload.stent_h_window, null),
+      l_spine: finiteFloat(payload.stent_l_spine, null),
+      h_spine: finiteFloat(payload.stent_h_spine, null),
+      two_way: finiteBool(payload.stent_two_way, true),
+      l_before: finiteFloat(payload.stent_l_before, 0.0),
+      l_after: finiteFloat(payload.stent_l_after, 0.0),
+      h_after: finiteFloat(payload.stent_h_after, null),
+      g_inlet: finiteFloat(payload.stent_g_inlet, 0.0),
+      geometry: String(payload.stent_geometry || payload.geometry || "ellipse")
+    });
+  }
+
+  function parseStentNodes(text, payload) {
+    return parseIntList(text).map(function (node) { return [node, stentFromPayload(payload)]; });
+  }
+
+  function defaultTrabeculotomies(hours) {
+    if (hours === 1) return [[550, 650]];
+    if (hours === 4) return [[100, 200], [400, 500], [700, 800], [1000, 1100]];
+    if (hours === 12) return [[0, 1199]];
+    if (hours === 0) return [];
+    throw new Error("Hours must be one of 0, 1, 4, or 12.");
+  }
+
+  function defaultYagHoles(count) {
+    var defaults = {
+      0: [], 1: [600], 2: [300, 900], 3: [200, 600, 1000],
+      4: [150, 450, 750, 1050], 5: [120, 360, 600, 840, 1080],
+      6: [100, 300, 500, 700, 900, 1100]
+    };
+    if (!(count in defaults)) throw new Error("Invalid value of n. Use explicit hole nodes for more than 6 holes.");
+    return defaults[count];
+  }
+
+  function estimateRtmFromBaselineIop(targetIop, baseOpts, onProgress) {
+    var pev = baseOpts.kwargs && baseOpts.kwargs.pev !== undefined ? Number(baseOpts.kwargs.pev) : 8.0;
+    if (targetIop <= pev) throw new Error("Baseline IOP must be greater than episcleral venous pressure.");
+
+    var solveOpts = {
+      geometry: baseOpts.geometry,
+      unconventional: baseOpts.unconventional,
+      max_error: baseOpts.max_error,
+      mode: "constant flow"
+    };
+    var baseKwargs = Object.assign({}, baseOpts.kwargs || {});
+    delete baseKwargs.rtm;
+
+    var calls = 0;
+    function solveIop(rtmValue) {
+      calls += 1;
+      if (onProgress) onProgress(calls);
+      // `rtm` is an explicit keyword in the Python call, so it is applied
+      // before the rest of the keyword arguments.
+      var kwargs = Object.assign({ rtm: rtmValue }, baseKwargs);
+      var res = solveCF(2.0, Object.assign({}, solveOpts, { kwargs: kwargs }));
+      return res.iop;
+    }
+
+    var low = 0.05, high = 8.0;
+    var lowIop = solveIop(low);
+    var highIop = solveIop(high);
+    if (targetIop <= lowIop) return low;
+
+    var expand = 0;
+    while (highIop < targetIop && expand < 8) {
+      high *= 1.75;
+      highIop = solveIop(high);
+      expand += 1;
+    }
+    if (highIop < targetIop) throw new Error("Could not match the requested baseline IOP with a reasonable Rtm range.");
+
+    for (var i = 0; i < 28; i++) {
+      var mid = 0.5 * (low + high);
+      if (solveIop(mid) < targetIop) low = mid;
+      else high = mid;
+    }
+    return Number((0.5 * (low + high)).toFixed(4));
+  }
+
+  function solutionToJsonable(solution, stents, ccs, meta) {
+    var pressure = Array.prototype.slice.call(solution.pressure).map(Number);
+    var jcc = Array.prototype.slice.call(solution.jcc || []).map(Number);
+    var iop = Number(solution.iop || 0);
+    meta = Object.assign({}, meta || {});
+
+    var heights = [];
+    for (var i = 0; i < pressure.length; i++) heights.push(getH(pressure[i], iop, i));
+
+    if (stents && stents.length) {
+      for (var k = 0; k < stents.length; k++) {
+        var loc = stents[k][0], stent = stents[k][1];
+        var end = Math.min(heights.length, loc + stent.length + 1);
+        for (var j = Math.max(0, loc); j < end; j++) {
+          var si = Math.max(0, j - loc);
+          heights[j] = stent.h[Math.min(si, stent.h.length - 1)];
+        }
+      }
+    }
+
+    var xPressure = [];
+    for (var p = 0; p < pressure.length; p++) xPressure.push(p * S.dx / 1000.0);
+
+    var xJcc, jccTitle;
+    if (ccs && ccs.length === jcc.length) {
+      xJcc = ccs.map(function (cc) { return Math.trunc(cc[0]); });
+      jccTitle = "Collector channel node";
+    } else {
+      xJcc = jcc.map(function (_, idx) { return idx; });
+      jccTitle = "Collector channel index";
+    }
+
+    meta.total_nodes = pressure.length;
+    meta.collector_channel_count = jcc.length;
+    if (ccs) meta.ccs = ccs.map(function (cc) { return { loc: Math.trunc(cc[0]), ratio: Number(cc[1]) }; });
+    if (stents && stents.length) {
+      meta.stents = stents.map(function (entry) {
+        return {
+          loc: Math.trunc(entry[0]),
+          name: entry[1].name,
+          span_nodes: entry[1].length + 1,
+          inlet_index: entry[1].locInlet,
+          two_way: !!entry[1].twoWay
+        };
+      });
+    }
+
+    return {
+      metrics: {
+        iop: Number(solution.iop || 0),
+        flowrate: Number(solution.flowrate || 0),
+        resistance: Number(solution.resistance || 0),
+        facility: Number(solution.facility || 0)
+      },
+      series: {
+        pressure: { x: xPressure, y: pressure },
+        height: { x: xPressure, y: heights },
+        jcc: { x: xJcc, y: jcc, x_title: jccTitle }
+      },
+      meta: meta
+    };
+  }
+
+  /* ---------------------------------------------------------------
+     solve_payload
+     --------------------------------------------------------------- */
+  function solvePayload(payload, onProgress) {
+    var mode = payload.mode || "constant flow";
+    var surgery = payload.surgery || "None";
+    var geometry = payload.geometry || "ellipse";
+    var meta = {};
+
+    var opts = { geometry: geometry, mode: mode, kwargs: { pev: finiteFloat(payload.pev, 8.0) } };
+    var kwargs = opts.kwargs;
+
+    var optionalFloats = ["etm", "h0", "hs", "rcc", "qu", "beta", "max_error"];
+    for (var i = 0; i < optionalFloats.length; i++) {
+      var key = optionalFloats[i];
+      var value = finiteFloat(payload[key], null);
+      if (value !== null) kwargs[key] = value;
+    }
+    if (kwargs.max_error !== undefined) opts.max_error = kwargs.max_error;
+
+    var nValue = finiteFloat(payload.n, null);
+    if (nValue !== null) kwargs.n = Math.trunc(nValue);
+    var mValue = finiteFloat(payload.m, null);
+    if (mValue !== null) kwargs.m = Math.trunc(mValue);
+
+    if (payload.unconventional) opts.unconventional = true;
+
+    var totalNodes = (kwargs.n !== undefined ? kwargs.n : 30) * (kwargs.m !== undefined ? kwargs.m : 40);
+    var maxNodes = totalNodes;
+
+    var rtmNodeValues = parseFullValueArray(payload.rtm_node_values, totalNodes, "TM full node array", false);
+    var variableRtmProfile = parseSegmentProfile(payload.rtm_profile, 12, "TM resistance", false);
+    if (rtmNodeValues !== null) {
+      opts.variable_rtm = true;
+      kwargs.rtm = rtmNodeValues;
+      meta.rtm_source = "tm_node_array";
+      meta.tm_node_count = rtmNodeValues.length;
+    } else if (variableRtmProfile !== null) {
+      opts.variable_rtm = true;
+      kwargs.rtm = expandTmProfile(variableRtmProfile, totalNodes);
+      meta.rtm_source = "tm_profile";
+      meta.tm_profile_segments = variableRtmProfile.length;
+    }
+
+    var manualRtm = finiteFloat(payload.rtm, null);
+    var autoRtm = finiteBool(payload.auto_rtm, false);
+    if (rtmNodeValues === null && variableRtmProfile === null && autoRtm && mode === "constant flow") {
+      var baselineIop = finiteFloat(payload.iop, 15.09);
+      var derived = estimateRtmFromBaselineIop(baselineIop, opts, onProgress);
+      kwargs.rtm = derived;
+      meta.rtm_source = "baseline_iop";
+      meta.baseline_iop = baselineIop;
+      meta.rtm_used = derived;
+    } else if (rtmNodeValues === null && variableRtmProfile === null && manualRtm !== null) {
+      kwargs.rtm = manualRtm;
+      meta.rtm_source = "manual";
+      meta.rtm_used = manualRtm;
+    }
+
+    var h0NodeValues = parseFullValueArray(payload.h0_node_values, totalNodes, "SC full node array", true);
+    var variableH0Profile = parseSegmentProfile(payload.h0_profile, (kwargs.n !== undefined ? kwargs.n : 30), "SC height", true);
+    if (h0NodeValues !== null) {
+      opts.variable_h0 = true;
+      kwargs.h0 = h0NodeValues;
+      meta.h0_source = "sc_node_array";
+      meta.sc_node_count = h0NodeValues.length;
+    } else if (variableH0Profile !== null) {
+      opts.variable_h0 = true;
+      kwargs.h0 = expandScProfile(variableH0Profile, totalNodes);
+      meta.h0_source = "sc_profile";
+      meta.sc_profile_segments = variableH0Profile.length;
+    }
+
+    var tmOverrides = parseNodeValueOverrides(payload.rtm_node_overrides, totalNodes, "TM resistance", false);
+    if (tmOverrides.length) {
+      var tmBase;
+      if (opts.variable_rtm && kwargs.rtm !== undefined && kwargs.rtm !== null) tmBase = Float64Array.from(kwargs.rtm);
+      else if (kwargs.rtm !== undefined && kwargs.rtm !== null) tmBase = filled(totalNodes, Number(kwargs.rtm) * totalNodes);
+      else tmBase = filled(totalNodes, 2.0 * totalNodes);
+      opts.variable_rtm = true;
+      kwargs.rtm = applyNodeValueOverrides(tmBase, tmOverrides);
+      meta.rtm_override_count = tmOverrides.length;
+      meta.rtm_overrides = tmOverrides.map(function (o) { return { start: o[0], end: o[1], value: o[2] }; });
+    }
+
+    var h0Overrides = parseNodeValueOverrides(payload.h0_node_overrides, totalNodes, "SC height", true);
+    if (h0Overrides.length) {
+      var h0Base;
+      if (opts.variable_h0 && kwargs.h0 !== undefined && kwargs.h0 !== null) h0Base = Float64Array.from(kwargs.h0);
+      else if (kwargs.h0 !== undefined && kwargs.h0 !== null) h0Base = filled(totalNodes, Number(kwargs.h0));
+      else h0Base = filled(totalNodes, 20.0);
+      opts.variable_h0 = true;
+      kwargs.h0 = applyNodeValueOverrides(h0Base, h0Overrides);
+      meta.h0_override_count = h0Overrides.length;
+      meta.h0_overrides = h0Overrides.map(function (o) { return { start: o[0], end: o[1], value: o[2] }; });
+    }
+
+    var gscMult = parseValueArrayOrOverrides(payload.gsc_multiplier, totalNodes, "SC conductance multiplier", true);
+    if (gscMult.values !== null) {
+      kwargs.gsc_multiplier = gscMult.values;
+      meta.gsc_multiplier_source = "full_array";
+      meta.gsc_multiplier_count = gscMult.values.length;
+    } else if (gscMult.overrides.length) {
+      kwargs.gsc_multiplier = applyNodeValueOverrides(filled(totalNodes, 1.0), gscMult.overrides);
+      meta.gsc_multiplier_source = "override_ranges";
+      meta.gsc_multiplier_override_count = gscMult.overrides.length;
+    }
+
+    var gscOver = parseValueArrayOrOverrides(payload.gsc_override, totalNodes, "SC conductance override", true);
+    if (gscOver.values !== null) {
+      kwargs.gsc_override = gscOver.values;
+      meta.gsc_override_source = "full_array";
+      meta.gsc_override_count = gscOver.values.length;
+    } else if (gscOver.overrides.length) {
+      kwargs.gsc_override = applyNodeValueOverrides(filled(totalNodes, NaN), gscOver.overrides);
+      meta.gsc_override_source = "override_ranges";
+      meta.gsc_override_range_count = gscOver.overrides.length;
+    }
+
+    var stents = null;
+    var ccs = parseCcs(payload.ccs, maxNodes);
+    var explicitTrab = parseRanges(payload.trabeculotomies);
+    var explicitSinus = parseRanges(payload.sinusotomies);
+    var explicitYag = parseIntList(payload.yag_holes_list);
+    var stentNodesText = payload.stent_nodes;
+    if (isBlank(stentNodesText) && surgery === "iStent") stentNodesText = payload.stent_node || "0";
+    var explicitStents = parseStentNodes(stentNodesText, payload);
+
+    if (explicitTrab.length) {
+      meta.trabeculotomies = explicitTrab.map(function (r) { return { start: r[0], end: r[1] }; });
+      meta.trabeculotomy_source = "explicit";
+    } else if (surgery === "Trabeculotomy") {
+      var defaultTrab = defaultTrabeculotomies(Math.trunc(finiteFloat(payload.trab_hours, 1)));
+      meta.trabeculotomies = defaultTrab.map(function (r) { return { start: r[0], end: r[1] }; });
+      meta.trabeculotomy_source = "default_hours";
+    }
+
+    if (explicitSinus.length) {
+      meta.sinusotomies = explicitSinus.map(function (r) { return { start: r[0], end: r[1] }; });
+    }
+
+    if (explicitYag.length) {
+      meta.yag_holes = explicitYag.slice();
+      meta.yag_source = "explicit";
+    } else if (surgery === "YAG holes") {
+      meta.yag_holes = defaultYagHoles(Math.trunc(finiteFloat(payload.yag_holes, 2))).slice();
+      meta.yag_source = "default_count";
+    }
+
+    if (explicitStents.length) meta.stent_count = explicitStents.length;
+    if (explicitSinus.length) opts.sinusotomies = explicitSinus;
+    if (ccs) opts.ccs = ccs;
+    if (explicitStents.length) { stents = explicitStents; opts.stents = stents; }
+
+    var solution;
+    if (surgery === "Trabeculotomy") {
+      var trabOpts = Object.assign({}, opts);
+      if (explicitTrab.length) trabOpts.trabeculotomies = explicitTrab;
+      solution = solveTrabeculotomy(
+        finiteFloat(payload.iop, 7.0),
+        finiteFloat(payload.qt, 2.0),
+        Math.trunc(finiteFloat(payload.trab_hours, 1)),
+        trabOpts
+      );
+    } else if (surgery === "YAG holes") {
+      var yagOpts = Object.assign({}, opts);
+      yagOpts.kwargs = Object.assign({}, kwargs);
+      delete yagOpts.kwargs.n;
+      solution = solveYagHoles(
+        finiteFloat(payload.qt, 2.0),
+        finiteFloat(payload.iop, 7.0),
+        Math.trunc(finiteFloat(payload.yag_holes, 2)),
+        explicitYag.length ? explicitYag : [],
+        yagOpts
+      );
+    } else if (mode === "constant pressure") {
+      if (explicitTrab.length) opts.trabeculotomies = explicitTrab;
+      if (explicitYag.length) opts.yag_holes = explicitYag;
+      solution = solveCP(finiteFloat(payload.iop, 7.0), opts);
+    } else {
+      if (explicitTrab.length) opts.trabeculotomies = explicitTrab;
+      if (explicitYag.length) opts.yag_holes = explicitYag;
+      solution = solveCF(finiteFloat(payload.qt, 2.0), opts);
+    }
+
+    return solutionToJsonable(solution, stents, ccs, meta);
+  }
+
+  return {
+    solvePayload: solvePayload,
+    solveCP: solveCP,
+    solveCF: solveCF,
+    solve: solve,
+    Stent: Stent,
+    state: S,
+    getH: getH,
+    getRcc: getRcc,
+    _internals: { getG: getG, directSolve: directSolve, gaussSeidel: gaussSeidel }
+  };
+})();
+
+
+  </script>
+  <script>
+/* =====================================================================
+   UI layer.  Same controls, rings and plots as the Python-served page;
+   the only difference is that Solve now calls the in-page solver instead
+   of POSTing to /api/solve, and the line chart is drawn as inline SVG
+   instead of by Plotly.
+   ===================================================================== */
+(function () {
+  "use strict";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var lastResult = null;
+  var lastSolvedPayload = null;
+  var resultDirty = false;
+
+  var FIELD_IDS = [
+    "mode", "geometry", "eye_side", "iop", "qt", "pev", "rtm", "auto_rtm", "n", "m",
+    "etm", "h0", "h0_profile", "hs", "rcc", "qu", "max_error", "beta", "unconventional",
+    "ccs", "rtm_profile", "rtm_node_values", "rtm_node_overrides", "h0_node_values",
+    "h0_node_overrides", "gsc_multiplier", "gsc_override", "surgery", "trab_hours",
+    "trabeculotomies", "sinusotomies", "yag_holes", "yag_holes_list", "stent_node",
+    "stent_nodes", "stent_name", "stent_length", "stent_loc_inlet", "stent_width",
+    "stent_height", "stent_l_before", "stent_l_after", "stent_h_after", "stent_g_inlet",
+    "stent_geometry", "stent_two_way", "stent_n_windows", "stent_l_window",
+    "stent_h_window", "stent_l_spine", "stent_h_spine", "plot_type"
+  ];
+
+  function payload() {
+    return {
+      mode: $("mode").value,
+      geometry: $("geometry").value,
+      iop: $("iop").value,
+      qt: $("qt").value,
+      pev: $("pev").value,
+      rtm: $("rtm").value,
+      auto_rtm: $("auto_rtm").checked,
+      n: $("n").value,
+      m: $("m").value,
+      etm: $("etm").value,
+      h0: $("h0").value,
+      h0_profile: $("h0_profile").value,
+      hs: $("hs").value,
+      rcc: $("rcc").value,
+      qu: $("qu").value,
+      max_error: $("max_error").value,
+      beta: $("beta").value,
+      unconventional: $("unconventional").checked,
+      ccs: $("ccs").value,
+      rtm_profile: $("rtm_profile").value,
+      rtm_node_values: $("rtm_node_values").value,
+      rtm_node_overrides: $("rtm_node_overrides").value,
+      h0_node_values: $("h0_node_values").value,
+      h0_node_overrides: $("h0_node_overrides").value,
+      gsc_multiplier: $("gsc_multiplier").value,
+      gsc_override: $("gsc_override").value,
+      surgery: $("surgery").value,
+      trab_hours: $("trab_hours").value,
+      trabeculotomies: $("trabeculotomies").value,
+      sinusotomies: $("sinusotomies").value,
+      yag_holes: $("yag_holes").value,
+      yag_holes_list: $("yag_holes_list").value,
+      stent_node: $("stent_node").value,
+      stent_nodes: $("stent_nodes").value,
+      stent_name: $("stent_name").value,
+      stent_length: $("stent_length").value,
+      stent_loc_inlet: $("stent_loc_inlet").value,
+      stent_width: $("stent_width").value,
+      stent_height: $("stent_height").value,
+      stent_l_before: $("stent_l_before").value,
+      stent_l_after: $("stent_l_after").value,
+      stent_h_after: $("stent_h_after").value,
+      stent_g_inlet: $("stent_g_inlet").value,
+      stent_geometry: $("stent_geometry").value,
+      stent_two_way: $("stent_two_way").checked,
+      stent_n_windows: $("stent_n_windows").value,
+      stent_l_window: $("stent_l_window").value,
+      stent_h_window: $("stent_h_window").value,
+      stent_l_spine: $("stent_l_spine").value,
+      stent_h_spine: $("stent_h_spine").value
+    };
+  }
+
+  function numberValue(value, fallback) {
+    var num = Number(value);
+    return isFinite(num) && value !== "" && value !== null ? num : (fallback === undefined ? null : fallback);
+  }
+
+  function fmt(value) {
+    if (!isFinite(value)) return "-";
+    return Number(value).toPrecision(5);
+  }
+
+  function eyeLabels() {
+    var rightEye = $("eye_side").value !== "left";
+    return {
+      eye: rightEye ? "Right Eye (OD)" : "Left Eye (OS)",
+      left: rightEye ? "Temporal" : "Nasal",
+      right: rightEye ? "Nasal" : "Temporal"
+    };
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function clamp(value, low, high) { return Math.min(high, Math.max(low, value)); }
+
+  function hexToRgb(hex) {
+    var clean = String(hex).replace("#", "");
+    return {
+      r: parseInt(clean.slice(0, 2), 16),
+      g: parseInt(clean.slice(2, 4), 16),
+      b: parseInt(clean.slice(4, 6), 16)
+    };
+  }
+
+  function mixColors(a, b, t) {
+    var left = hexToRgb(a), right = hexToRgb(b), ratio = clamp(t, 0, 1);
+    var c = function (x, y) { return Math.round(x + (y - x) * ratio); };
+    return "rgb(" + c(left.r, right.r) + ", " + c(left.g, right.g) + ", " + c(left.b, right.b) + ")";
+  }
+
+  function polarPoint(cx, cy, radius, degrees) {
+    var radians = (degrees - 90) * Math.PI / 180;
+    return { x: cx + radius * Math.cos(radians), y: cy + radius * Math.sin(radians) };
+  }
+
+  function arcPath(cx, cy, radius, startDeg, spanDeg) {
+    var span = clamp(spanDeg, 0.2, 359.8);
+    var start = polarPoint(cx, cy, radius, startDeg);
+    var end = polarPoint(cx, cy, radius, startDeg + span);
+    var largeArc = span > 180 ? 1 : 0;
+    return "M " + start.x.toFixed(2) + " " + start.y.toFixed(2) + " A " + radius + " " + radius +
+      " 0 " + largeArc + " 1 " + end.x.toFixed(2) + " " + end.y.toFixed(2);
+  }
+
+  function annularSectorPath(cx, cy, innerRadius, outerRadius, startDeg, spanDeg) {
+    var span = clamp(spanDeg, 0.2, 359.8);
+    var outerStart = polarPoint(cx, cy, outerRadius, startDeg);
+    var outerEnd = polarPoint(cx, cy, outerRadius, startDeg + span);
+    var innerEnd = polarPoint(cx, cy, innerRadius, startDeg + span);
+    var innerStart = polarPoint(cx, cy, innerRadius, startDeg);
+    var largeArc = span > 180 ? 1 : 0;
+    return [
+      "M " + outerStart.x.toFixed(2) + " " + outerStart.y.toFixed(2),
+      "A " + outerRadius + " " + outerRadius + " 0 " + largeArc + " 1 " + outerEnd.x.toFixed(2) + " " + outerEnd.y.toFixed(2),
+      "L " + innerEnd.x.toFixed(2) + " " + innerEnd.y.toFixed(2),
+      "A " + innerRadius + " " + innerRadius + " 0 " + largeArc + " 0 " + innerStart.x.toFixed(2) + " " + innerStart.y.toFixed(2),
+      "Z"
+    ].join(" ");
+  }
+
+  function anatomyColors() {
+    return {
+      Superior: "rgba(102, 167, 214, 0.22)",
+      Inferior: "rgba(165, 132, 201, 0.20)",
+      Temporal: "rgba(221, 166, 94, 0.20)",
+      Nasal: "rgba(106, 176, 117, 0.20)"
+    };
+  }
+
+  function drawTicks(cx, cy, radius) {
+    var parts = [];
+    for (var deg = 0; deg < 360; deg += 10) {
+      var isMajor = deg % 20 === 0;
+      var inner = polarPoint(cx, cy, radius - (isMajor ? 14 : 8), deg);
+      var outer = polarPoint(cx, cy, radius, deg);
+      parts.push('<line x1="' + inner.x.toFixed(2) + '" y1="' + inner.y.toFixed(2) + '" x2="' + outer.x.toFixed(2) +
+        '" y2="' + outer.y.toFixed(2) + '" stroke="#7c877f" stroke-width="' + (isMajor ? 1.8 : 1) + '" opacity="0.85"></line>');
+      if (isMajor) {
+        var text = polarPoint(cx, cy, radius - 24, deg);
+        parts.push('<text x="' + text.x.toFixed(2) + '" y="' + text.y.toFixed(2) +
+          '" text-anchor="middle" dominant-baseline="central" class="ring-label">' + deg + '°</text>');
+      }
+    }
+    return parts.join("");
+  }
+
+  function drawAnatomyOverlay(cx, cy, innerRadius, outerRadius, frameWidth) {
+    var labels = eyeLabels();
+    var boundaries = [45, 135, 225, 315];
+    var parts = [];
+    var colors = anatomyColors();
+
+    parts.push('<path class="anatomy-sector" d="' + annularSectorPath(cx, cy, innerRadius, outerRadius, 315, 90) + '" fill="' + colors.Superior + '"></path>');
+    parts.push('<path class="anatomy-sector" d="' + annularSectorPath(cx, cy, innerRadius, outerRadius, 45, 90) + '" fill="' + colors[labels.right] + '"></path>');
+    parts.push('<path class="anatomy-sector" d="' + annularSectorPath(cx, cy, innerRadius, outerRadius, 135, 90) + '" fill="' + colors.Inferior + '"></path>');
+    parts.push('<path class="anatomy-sector" d="' + annularSectorPath(cx, cy, innerRadius, outerRadius, 225, 90) + '" fill="' + colors[labels.left] + '"></path>');
+
+    boundaries.forEach(function (degrees) {
+      var inner = polarPoint(cx, cy, innerRadius, degrees);
+      var outer = polarPoint(cx, cy, outerRadius, degrees);
+      parts.push('<line class="anatomy-divider" x1="' + inner.x.toFixed(2) + '" y1="' + inner.y.toFixed(2) +
+        '" x2="' + outer.x.toFixed(2) + '" y2="' + outer.y.toFixed(2) + '"></line>');
+    });
+
+    var leftX = Math.max(20, cx - outerRadius - 44);
+    var rightX = Math.min(frameWidth - 20, cx + outerRadius + 44);
+
+    parts.push('<text x="' + cx.toFixed(2) + '" y="' + (cy - outerRadius - 34).toFixed(2) + '" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Superior</text>');
+    parts.push('<text x="' + cx.toFixed(2) + '" y="' + (cy + outerRadius + 34).toFixed(2) + '" text-anchor="middle" dominant-baseline="central" class="anatomy-label">Inferior</text>');
+    parts.push('<text x="' + leftX.toFixed(2) + '" y="' + cy.toFixed(2) + '" text-anchor="start" dominant-baseline="central" class="anatomy-label-side">' + labels.left + '</text>');
+    parts.push('<text x="' + rightX.toFixed(2) + '" y="' + cy.toFixed(2) + '" text-anchor="end" dominant-baseline="central" class="anatomy-label-side">' + labels.right + '</text>');
+    return parts.join("");
+  }
+
+  function anatomyAxisGuide(series) {
+    if (!series || !series.x || !series.x.length) return null;
+    var minX = Math.min.apply(null, series.x);
+    var maxX = Math.max.apply(null, series.x);
+    if (!isFinite(minX) || !isFinite(maxX) || maxX <= minX) return null;
+
+    var labels = eyeLabels();
+    var span = maxX - minX;
+    var colors = anatomyColors();
+    return {
+      ticks: [
+        { value: minX, label: "Superior" },
+        { value: minX + span * 0.25, label: labels.right },
+        { value: minX + span * 0.5, label: "Inferior" },
+        { value: minX + span * 0.75, label: labels.left },
+        { value: maxX, label: "Superior" }
+      ],
+      regions: [
+        { x0: minX, x1: minX + span * 0.125, color: colors.Superior },
+        { x0: minX + span * 0.125, x1: minX + span * 0.375, color: colors[labels.right] },
+        { x0: minX + span * 0.375, x1: minX + span * 0.625, color: colors.Inferior },
+        { x0: minX + span * 0.625, x1: minX + span * 0.875, color: colors[labels.left] },
+        { x0: minX + span * 0.875, x1: maxX, color: colors.Superior }
+      ],
+      boundaries: [0.125, 0.375, 0.625, 0.875].map(function (r) { return minX + span * r; })
+    };
+  }
+
+  /* ---------------- setup / solution rings ---------------- */
+
+  function parseRangesText(text) {
+    if (!text || !String(text).trim()) return [];
+    var values = [];
+    String(text).replace(/;/g, ",").split(",").forEach(function (chunk) {
+      var part = chunk.trim();
+      if (!part) return;
+      var start = 0, end = 0, bits;
+      if (part.indexOf("-") >= 0) {
+        bits = part.split("-");
+        start = Math.round(Number(bits[0].trim()));
+        end = Math.round(Number(bits.slice(1).join("-").trim()));
+      } else if (part.indexOf(":") >= 0) {
+        bits = part.split(":");
+        start = Math.round(Number(bits[0].trim()));
+        end = Math.round(Number(bits.slice(1).join(":").trim()));
+      } else {
+        start = end = Math.round(Number(part));
+      }
+      if (isFinite(start) && isFinite(end)) {
+        if (end < start) { var t = start; start = end; end = t; }
+        values.push({ start: start, end: end });
+      }
+    });
+    return values;
+  }
+
+  function parseNodeListText(text) {
+    if (!text || !String(text).trim()) return [];
+    return String(text).replace(/;/g, ",").split(",")
+      .map(function (part) { return Math.round(Number(part.trim())); })
+      .filter(function (value) { return isFinite(value); });
+  }
+
+  function parseCCsText(text) {
+    if (!text || !String(text).trim()) return [];
+    var ccs = [];
+    String(text).replace(/;/g, ",").split(",").forEach(function (chunk) {
+      var part = chunk.trim();
+      if (!part) return;
+      var locText = part, ratioText = "1", idx;
+      if ((idx = part.indexOf(":")) >= 0) { locText = part.slice(0, idx); ratioText = part.slice(idx + 1); }
+      else if ((idx = part.indexOf("=")) >= 0) { locText = part.slice(0, idx); ratioText = part.slice(idx + 1); }
+      var loc = Math.round(Number(locText.trim()));
+      var ratio = Number(ratioText.trim());
+      if (isFinite(loc) && isFinite(ratio)) ccs.push({ loc: loc, ratio: ratio });
+    });
+    return ccs;
+  }
+
+  function parseProfileValues(text, expectedCount) {
+    if (!text || !String(text).trim() || !expectedCount) return null;
+    var chunks = String(text).replace(/;/g, ",").replace(/\n/g, ",").split(",")
+      .map(function (part) { return part.trim(); }).filter(Boolean);
+    if (!chunks.length) return null;
+
+    var keyed = chunks.some(function (part) { return part.indexOf(":") >= 0 || part.indexOf("=") >= 0; });
+    if (keyed) {
+      var values = new Array(expectedCount).fill(null);
+      chunks.forEach(function (chunk) {
+        var divider = chunk.indexOf(":") >= 0 ? ":" : "=";
+        var at = chunk.indexOf(divider);
+        var index = Math.round(Number(chunk.slice(0, at).trim())) - 1;
+        var value = Number(chunk.slice(at + 1).trim());
+        if (index >= 0 && index < expectedCount && isFinite(value)) values[index] = value;
+      });
+      return values.every(function (value) { return isFinite(value); }) ? values : null;
+    }
+
+    var raw = chunks.map(Number).filter(function (value) { return isFinite(value); });
+    if (!raw.length) return null;
+    if (raw.length === 1) return new Array(expectedCount).fill(raw[0]);
+    if (raw.length === expectedCount) return raw;
+    return null;
+  }
+
+  function defaultTrabeculotomies(hours) {
+    if (hours === 1) return [{ start: 550, end: 650 }];
+    if (hours === 4) return [{ start: 100, end: 200 }, { start: 400, end: 500 }, { start: 700, end: 800 }, { start: 1000, end: 1100 }];
+    if (hours === 12) return [{ start: 0, end: 1199 }];
+    return [];
+  }
+
+  function defaultYagHoles(count) {
+    var defaults = {
+      0: [], 1: [600], 2: [300, 900], 3: [200, 600, 1000],
+      4: [150, 450, 750, 1050], 5: [120, 360, 600, 840, 1080],
+      6: [100, 300, 500, 700, 900, 1100]
+    };
+    return defaults[count] || [];
+  }
+
+  function normalizeNode(node, totalNodes) {
+    if (!totalNodes) return 0;
+    var rounded = Math.round(Number(node) || 0);
+    return ((rounded % totalNodes) + totalNodes) % totalNodes;
+  }
+
+  function inferCollectorNodes(currentPayload, result, totalNodes) {
+    if (result && result.meta && result.meta.ccs && result.meta.ccs.length) {
+      return result.meta.ccs.map(function (cc) { return { loc: cc.loc, ratio: cc.ratio }; });
+    }
+    var explicit = parseCCsText(currentPayload.ccs);
+    if (explicit.length) return explicit;
+    var mValue = Math.max(1, Math.round(numberValue(currentPayload.m, 40) || 40));
+    var count = Math.max(1, Math.round(numberValue(currentPayload.n, Math.max(1, Math.floor(totalNodes / mValue))) || 30));
+    var out = [];
+    for (var i = 0; i < count; i++) out.push({ loc: i * mValue, ratio: 1 });
+    return out;
+  }
+
+  function estimatePendingStentSpan(currentPayload) {
+    var lengthUm = Math.max(30, numberValue(currentPayload.stent_length, 1000) || 1000);
+    var beforeNodes = Math.max(0, Math.round(numberValue(currentPayload.stent_l_before, 0) || 0));
+    var afterNodes = Math.max(0, Math.round(numberValue(currentPayload.stent_l_after, 0) || 0));
+    return Math.max(1, Math.round(lengthUm / 30)) + beforeNodes + afterNodes + 1;
+  }
+
+  function collectSetupModel(currentPayload, result) {
+    var fallbackNodes = (numberValue(currentPayload.n, 30) || 30) * (numberValue(currentPayload.m, 40) || 40);
+    var metaNodes = result && result.meta ? result.meta.total_nodes : null;
+    var seriesNodes = result && result.series ? result.series.pressure.y.length : null;
+    var totalNodes = Math.max(1, Math.round(metaNodes || seriesNodes || fallbackNodes));
+    var ccs = inferCollectorNodes(currentPayload, result, totalNodes);
+
+    var trabeculotomies;
+    if (result && result.meta && result.meta.trabeculotomies && result.meta.trabeculotomies.length) {
+      trabeculotomies = result.meta.trabeculotomies;
+    } else {
+      trabeculotomies = parseRangesText(currentPayload.trabeculotomies);
+      if (!trabeculotomies.length && currentPayload.surgery === "Trabeculotomy") {
+        trabeculotomies = defaultTrabeculotomies(Math.round(numberValue(currentPayload.trab_hours, 1) || 1));
+      }
+    }
+
+    var yagHoles;
+    if (result && result.meta && result.meta.yag_holes && result.meta.yag_holes.length) {
+      yagHoles = result.meta.yag_holes;
+    } else {
+      yagHoles = parseNodeListText(currentPayload.yag_holes_list);
+      if (!yagHoles.length && currentPayload.surgery === "YAG holes") {
+        yagHoles = defaultYagHoles(Math.round(numberValue(currentPayload.yag_holes, 2) || 2));
+      }
+    }
+
+    var stents;
+    if (result && result.meta && result.meta.stents && result.meta.stents.length) {
+      stents = result.meta.stents;
+    } else {
+      var nodesText = currentPayload.stent_nodes;
+      if (!nodesText && currentPayload.surgery === "iStent") nodesText = currentPayload.stent_node || "0";
+      var span = estimatePendingStentSpan(currentPayload);
+      stents = parseNodeListText(nodesText).map(function (loc) {
+        return {
+          loc: loc,
+          name: currentPayload.stent_name || "Custom iStent",
+          span_nodes: span,
+          inlet_index: Math.max(0, Math.round(numberValue(currentPayload.stent_l_before, 0) || 0)),
+          two_way: !!currentPayload.stent_two_way
+        };
+      });
+    }
+
+    var nSegments = Math.max(1, Math.round(numberValue(currentPayload.n, ccs.length || 30) || 30));
+    var metaSinus = result && result.meta ? result.meta.sinusotomies : null;
+
+    return {
+      totalNodes: totalNodes,
+      ccs: ccs,
+      trabeculotomies: trabeculotomies,
+      sinusotomies: metaSinus || parseRangesText(currentPayload.sinusotomies),
+      yagHoles: yagHoles,
+      stents: stents,
+      tmProfile: parseProfileValues(currentPayload.rtm_node_values, totalNodes) || parseProfileValues(currentPayload.rtm_profile, 12),
+      scProfile: parseProfileValues(currentPayload.h0_node_values, totalNodes) || parseProfileValues(currentPayload.h0_profile, nSegments),
+      hasGscControl: !!(String(currentPayload.gsc_multiplier || "").trim() || String(currentPayload.gsc_override || "").trim()),
+      surgery: currentPayload.surgery
+    };
+  }
+
+  function rangeSpanNodes(range) { return Math.max(1, range.end - range.start + 1); }
+
+  function buildSetupSummary(model) {
+    var labels = eyeLabels();
+    var lines = [];
+    lines.push("<div><b>" + model.ccs.length + "</b> collector channels across <b>" + model.totalNodes + "</b> SC nodes.</div>");
+    lines.push("<div>Interventions: trab <b>" + model.trabeculotomies.length + "</b>, sinus <b>" + model.sinusotomies.length +
+      "</b>, YAG <b>" + model.yagHoles.length + "</b>, stents <b>" + model.stents.length + "</b>.</div>");
+    lines.push("<div>Profiles: TM " + (model.tmProfile ? "<b>variable</b>" : "scalar") + " | SC height " +
+      (model.scProfile ? "<b>variable</b>" : "scalar") + ".</div>");
+    if (model.hasGscControl) lines.push("<div>SC circumferential conductance: <b>customized</b>.</div>");
+    lines.push("<div>Eye orientation: <b>" + labels.eye + "</b> with <b>" + labels.left + "</b> on the left and <b>" + labels.right + "</b> on the right.</div>");
+    $("setup_summary").innerHTML = lines.join("");
+  }
+
+  function renderSetupRing(currentPayload, result) {
+    var svg = $("setup_svg");
+    var model = collectSetupModel(currentPayload, result);
+    buildSetupSummary(model);
+
+    var cx = 210, cy = 210, ccRadius = 166, scRadius = 132, tmRadius = 98;
+    var parts = [];
+
+    parts.push('<rect x="0" y="0" width="420" height="420" rx="22" fill="rgba(8,19,17,0.96)"></rect>');
+    parts.push(drawTicks(cx, cy, 184));
+    parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + ccRadius + '" fill="none" stroke="rgba(110,231,216,0.16)" stroke-width="16"></circle>');
+    parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + scRadius + '" fill="none" stroke="rgba(50,184,163,0.24)" stroke-width="22"></circle>');
+    parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + tmRadius + '" fill="none" stroke="rgba(240,179,91,0.16)" stroke-width="18"></circle>');
+    parts.push(drawAnatomyOverlay(cx, cy, tmRadius - 8, ccRadius + 4, 420));
+
+    if (model.scProfile) {
+      var scMin = Math.min.apply(null, model.scProfile), scMax = Math.max.apply(null, model.scProfile);
+      model.scProfile.forEach(function (value, idx) {
+        var start = 360 * idx / model.scProfile.length;
+        var span = 360 / model.scProfile.length - 0.9;
+        var color = mixColors("#16342f", "#32b8a3", scMax === scMin ? 0.5 : (value - scMin) / (scMax - scMin));
+        parts.push('<path d="' + arcPath(cx, cy, scRadius, start, span) + '" stroke="' + color + '" stroke-width="22" fill="none" opacity="0.95"></path>');
+      });
+    }
+
+    if (model.tmProfile) {
+      var tmMin = Math.min.apply(null, model.tmProfile), tmMax = Math.max.apply(null, model.tmProfile);
+      model.tmProfile.forEach(function (value, idx) {
+        var start = 360 * idx / model.tmProfile.length;
+        var span = 360 / model.tmProfile.length - 1.2;
+        var color = mixColors("#3a2c1f", "#f0b35b", tmMax === tmMin ? 0.5 : (value - tmMin) / (tmMax - tmMin));
+        parts.push('<path d="' + arcPath(cx, cy, tmRadius, start, span) + '" stroke="' + color + '" stroke-width="18" fill="none" opacity="0.96"></path>');
+      });
+    }
+
+    model.trabeculotomies.forEach(function (range) {
+      var start = 360 * normalizeNode(range.start, model.totalNodes) / model.totalNodes;
+      var span = 360 * rangeSpanNodes(range) / model.totalNodes;
+      if (span >= 359.5) {
+        parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + scRadius + '" fill="none" stroke="#1a9b73" stroke-width="12"></circle>');
+      } else {
+        parts.push('<path d="' + arcPath(cx, cy, scRadius, start, span) + '" stroke="#1a9b73" stroke-width="12" stroke-linecap="round" fill="none"></path>');
+      }
+    });
+
+    model.sinusotomies.forEach(function (range) {
+      var start = 360 * normalizeNode(range.start, model.totalNodes) / model.totalNodes;
+      var span = 360 * rangeSpanNodes(range) / model.totalNodes;
+      if (span >= 359.5) {
+        parts.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + (ccRadius - 8) + '" fill="none" stroke="#d9782b" stroke-width="8" stroke-dasharray="3 5"></circle>');
+      } else {
+        parts.push('<path d="' + arcPath(cx, cy, ccRadius - 8, start, span) + '" stroke="#d9782b" stroke-width="8" stroke-linecap="round" stroke-dasharray="3 5" fill="none"></path>');
+      }
+    });
+
+    model.stents.forEach(function (stent) {
+      var start = 360 * normalizeNode(stent.loc, model.totalNodes) / model.totalNodes;
+      var span = 360 * Math.max(1, stent.span_nodes || 1) / model.totalNodes;
+      parts.push('<path d="' + arcPath(cx, cy, scRadius - 2, start, span) + '" stroke="#2075b8" stroke-width="10" stroke-linecap="round" fill="none"></path>');
+      var inletNode = normalizeNode(stent.loc + (stent.inlet_index || 0), model.totalNodes);
+      var inlet = polarPoint(cx, cy, scRadius - 2, 360 * inletNode / model.totalNodes);
+      parts.push('<circle cx="' + inlet.x.toFixed(2) + '" cy="' + inlet.y.toFixed(2) + '" r="4.5" fill="#0b1715" stroke="#4ea3ff" stroke-width="2"></circle>');
+    });
+
+    model.yagHoles.forEach(function (node) {
+      var point = polarPoint(cx, cy, tmRadius + 18, 360 * normalizeNode(node, model.totalNodes) / model.totalNodes);
+      parts.push('<circle cx="' + point.x.toFixed(2) + '" cy="' + point.y.toFixed(2) + '" r="5.5" fill="#0b1715" stroke="#ff6fa7" stroke-width="3"></circle>');
+    });
+
+    model.ccs.forEach(function (cc) {
+      var angle = 360 * normalizeNode(cc.loc, model.totalNodes) / model.totalNodes;
+      var inner = polarPoint(cx, cy, ccRadius - 3, angle);
+      var outer = polarPoint(cx, cy, ccRadius + 22, angle);
+      var width = clamp(1.2 + (Number(cc.ratio) || 1) * 0.8, 1.4, 6.5);
+      parts.push('<line x1="' + inner.x.toFixed(2) + '" y1="' + inner.y.toFixed(2) + '" x2="' + outer.x.toFixed(2) +
+        '" y2="' + outer.y.toFixed(2) + '" stroke="#4ea3ff" stroke-width="' + width.toFixed(2) + '" opacity="0.9"></line>');
+    });
+
+    parts.push('<text x="' + cx + '" y="' + (cy - 10) + '" text-anchor="middle" class="ring-title">Anterior Chamber</text>');
+    parts.push('<text x="' + cx + '" y="' + (cy + 14) + '" text-anchor="middle" class="ring-label">Schlemm\'s canal / TM / CC map</text>');
+    svg.innerHTML = parts.join("");
+  }
+
+  function updateMetrics(metrics) {
+    $("m_iop").textContent = fmt(metrics.iop);
+    $("m_flowrate").textContent = fmt(metrics.flowrate);
+    $("m_resistance").textContent = fmt(metrics.resistance);
+    $("m_facility").textContent = fmt(metrics.facility);
+  }
+
+  function updateModeUI() {
+    var isConstantPressure = $("mode").value === "constant pressure";
+    var hasVariableRtmProfile = $("rtm_profile").value.trim().length > 0;
+    var hasFullRtmArray = $("rtm_node_values").value.trim().length > 0;
+    var autoRtmEnabled = $("auto_rtm").checked && !isConstantPressure && !hasVariableRtmProfile && !hasFullRtmArray;
+    $("iop_label").textContent = isConstantPressure ? "IOP" : "Baseline IOP";
+    $("iop").value = $("iop").value || (isConstantPressure ? "7.0" : "15.09");
+    $("iop_hint").textContent = isConstantPressure
+      ? "In constant pressure mode, IOP is the target pressure for the solve."
+      : hasFullRtmArray
+        ? "Baseline IOP and scalar RTM are ignored while a full TM node array is present. Clear the node array to re-enable auto RTM."
+        : hasVariableRtmProfile
+          ? "Baseline IOP is not used while a TM resistance profile is present. Clear the profile to re-enable auto RTM."
+          : "In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled. The estimate assumes a baseline eye with no surgeries and default collector channels.";
+    $("auto_rtm").disabled = isConstantPressure || hasVariableRtmProfile || hasFullRtmArray;
+    $("rtm").disabled = autoRtmEnabled || hasVariableRtmProfile || hasFullRtmArray;
+    $("rtm").placeholder = hasFullRtmArray ? "from node array"
+      : (hasVariableRtmProfile ? "from TM profile" : (autoRtmEnabled ? "auto" : "default"));
+  }
+
+  function updateInterventionUI() {
+    var surgery = $("surgery").value;
+    var hasTrabRanges = $("trabeculotomies").value.trim().length > 0;
+    var hasYagNodes = $("yag_holes_list").value.trim().length > 0;
+    var hasStentNodes = $("stent_nodes").value.trim().length > 0;
+
+    $("trab_hours_wrap").classList.toggle("hidden", surgery !== "Trabeculotomy");
+    $("yag_count_wrap").classList.toggle("hidden", surgery !== "YAG holes");
+
+    $("trabeculotomy_hint").textContent = surgery === "Trabeculotomy"
+      ? (hasTrabRanges ? "Explicit ranges will override the preset clock-hour trabeculotomy." : "Leave blank to use the selected Trab hours preset.")
+      : "Optional SC node ranges. This stays available even if Surgery is not set to Trabeculotomy.";
+
+    $("yag_nodes_hint").textContent = surgery === "YAG holes"
+      ? (hasYagNodes ? "Explicit YAG node locations will override the YAG hole count preset." : "Leave blank to use the YAG hole count above.")
+      : "Optional explicit YAG node locations.";
+
+    $("stent_nodes_hint").textContent = surgery === "iStent"
+      ? (hasStentNodes ? "All listed nodes will receive the stent model from the editor below." : "If left blank, node 0 will receive one stent.")
+      : "Optional explicit stent nodes. If you fill these, the stent editor below is used even without selecting iStent surgery.";
+
+    if (surgery === "iStent" || hasStentNodes) $("panel_stent").open = true;
+  }
+
+  function statusFromMeta(meta) {
+    if (!meta) return "";
+    var parts = [];
+    if (meta.rtm_source === "baseline_iop") parts.push("Auto RTM enabled: baseline IOP " + fmt(meta.baseline_iop) + " -> Rtm " + fmt(meta.rtm_used) + ".");
+    if (meta.rtm_source === "manual") parts.push("Manual Rtm used: " + fmt(meta.rtm_used) + ".");
+    if (meta.rtm_source === "tm_profile") parts.push("Variable TM profile used: " + (meta.tm_profile_segments || 12) + " segments.");
+    if (meta.rtm_source === "tm_node_array") parts.push("Full TM node array used: " + (meta.tm_node_count || $("n").value * $("m").value) + " nodes.");
+    if (meta.h0_source === "sc_profile") parts.push("Variable SC profile used: " + (meta.sc_profile_segments || $("n").value || 30) + " segments.");
+    if (meta.h0_source === "sc_node_array") parts.push("Full SC node array used: " + (meta.sc_node_count || $("n").value * $("m").value) + " nodes.");
+    if (meta.rtm_override_count) parts.push("TM node overrides applied: " + meta.rtm_override_count + ".");
+    if (meta.h0_override_count) parts.push("SC node height overrides applied: " + meta.h0_override_count + ".");
+    if (meta.gsc_multiplier_count) parts.push("Full SC conductance multiplier array used: " + meta.gsc_multiplier_count + " segments.");
+    else if (meta.gsc_multiplier_override_count) parts.push("SC conductance multiplier overrides applied: " + meta.gsc_multiplier_override_count + ".");
+    if (meta.gsc_override_count) parts.push("Full SC conductance override array used: " + meta.gsc_override_count + " segments.");
+    else if (meta.gsc_override_range_count) parts.push("SC conductance overrides applied: " + meta.gsc_override_range_count + ".");
+    return parts.join(" ");
+  }
+
+  function renderSolutionInfo(result, details) {
+    var labels = eyeLabels();
+    var rows = [
+      '<div class="solution-row"><span>IOP</span><b>' + fmt(result.metrics.iop) + ' mmHg</b></div>',
+      '<div class="solution-row"><span>Flow rate</span><b>' + fmt(result.metrics.flowrate) + ' uL/min</b></div>',
+      '<div class="solution-row"><span>Resistance</span><b>' + fmt(result.metrics.resistance) + '</b></div>',
+      '<div class="solution-row"><span>Eye</span><b>' + labels.eye + '</b></div>'
+    ];
+    if (details && details.kind === "node") {
+      rows.push('<div class="solution-row"><span>θ</span><b>' + fmt(details.theta) + '°</b></div>');
+      rows.push('<div class="solution-row"><span>Psc</span><b>' + fmt(details.pressure) + ' mmHg</b></div>');
+      rows.push('<div class="solution-row"><span>Canal height</span><b>' + fmt(details.height) + ' um</b></div>');
+    } else if (details && details.kind === "cc") {
+      rows.push('<div class="solution-row"><span>CC node</span><b>' + escapeHtml(details.loc) + '</b></div>');
+      rows.push('<div class="solution-row"><span>Jcc</span><b>' + fmt(details.flow) + ' uL/min</b></div>');
+    } else {
+      rows.push("<div>Hover the pressure ring to inspect local pressure and canal height, or hover a collector channel to inspect its flow.</div>");
+    }
+    $("solution_info").innerHTML = rows.join("");
+  }
+
+  function renderSolutionRing(result, solvedPayload) {
+    var svg = $("solution_svg");
+    var note = $("solution_note");
+    if (!result) {
+      svg.innerHTML = '<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(8,19,17,0.96)"></rect>' +
+        '<text x="260" y="208" text-anchor="middle" class="ring-title">No solution yet</text>' +
+        '<text x="260" y="232" text-anchor="middle" class="ring-label">Run Solve to render the pressure and flow map.</text>';
+      $("solution_info").textContent = "Hover the pressure ring or a collector channel to inspect local values.";
+      note.textContent = "Waiting for the first solve.";
+      return;
+    }
+
+    var pressure = result.series.pressure.y;
+    var heights = result.series.height.y;
+    var jcc = result.series.jcc.y;
+    var totalNodes = Math.max(1, Math.round((result.meta && result.meta.total_nodes) || pressure.length));
+    var ccs = inferCollectorNodes(solvedPayload, result, totalNodes);
+    var pev = numberValue(solvedPayload && solvedPayload.pev, 8.0) || 8.0;
+    var iop = numberValue(result.metrics.iop, 0) || 0;
+    var pLow = Math.min(pev, Math.min.apply(null, pressure));
+    var pHigh = Math.max(iop, Math.max.apply(null, pressure));
+    var hLow = Math.min.apply(null, heights);
+    var hHigh = Math.max.apply(null, heights);
+    var maxFlow = Math.max(Math.max.apply(null, jcc), 1e-9);
+    var parts = [];
+    var cx = 300, cy = 210, pressureRadius = 126, heightRadius = 92, ccRadius = 142;
+
+    parts.push('<defs><linearGradient id="pressureScale" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ff6b5f"></stop><stop offset="100%" stop-color="#4ea3ff"></stop></linearGradient></defs>');
+    parts.push('<rect x="0" y="0" width="520" height="420" rx="22" fill="rgba(8,19,17,0.96)"></rect>');
+    parts.push('<rect x="18" y="44" width="18" height="248" rx="4" fill="url(#pressureScale)"></rect>');
+    parts.push('<text x="48" y="54" class="ring-label">' + fmt(pHigh) + ' mmHg</text>');
+    parts.push('<text x="48" y="292" class="ring-label">' + fmt(pLow) + ' mmHg</text>');
+    parts.push('<text x="18" y="26" class="ring-label">Pressure</text>');
+    parts.push(drawTicks(cx, cy, 182));
+    parts.push(drawAnatomyOverlay(cx, cy, heightRadius - 10, ccRadius + 18, 520));
+
+    pressure.forEach(function (value, idx) {
+      var start = 360 * idx / totalNodes;
+      var span = 360 / totalNodes + 0.12;
+      var color = mixColors("#4ea3ff", "#ff6b5f", pHigh === pLow ? 0.5 : (value - pLow) / (pHigh - pLow));
+      parts.push('<path class="hoverable" data-kind="node" data-theta="' + (360 * idx / totalNodes).toFixed(2) +
+        '" data-pressure="' + value + '" data-height="' + heights[idx] + '" d="' + arcPath(cx, cy, pressureRadius, start, span) +
+        '" stroke="' + color + '" stroke-width="20" fill="none"></path>');
+    });
+
+    heights.forEach(function (value, idx) {
+      var start = 360 * idx / totalNodes;
+      var span = 360 / totalNodes + 0.12;
+      var color = mixColors("#3a2c1f", "#32b8a3", hHigh === hLow ? 0.5 : (value - hLow) / (hHigh - hLow));
+      parts.push('<path d="' + arcPath(cx, cy, heightRadius, start, span) + '" stroke="' + color + '" stroke-width="16" fill="none" opacity="0.96"></path>');
+    });
+
+    ccs.slice(0, jcc.length).forEach(function (cc, idx) {
+      var angle = 360 * normalizeNode(cc.loc, totalNodes) / totalNodes;
+      var inner = polarPoint(cx, cy, ccRadius, angle);
+      var outer = polarPoint(cx, cy, ccRadius + 10 + 22 * (jcc[idx] / maxFlow), angle);
+      var color = mixColors("#86c9ff", "#4ea3ff", jcc[idx] / maxFlow);
+      parts.push('<line class="hoverable" data-kind="cc" data-loc="' + cc.loc + '" data-flow="' + jcc[idx] +
+        '" x1="' + inner.x.toFixed(2) + '" y1="' + inner.y.toFixed(2) + '" x2="' + outer.x.toFixed(2) + '" y2="' + outer.y.toFixed(2) +
+        '" stroke="' + color + '" stroke-width="4" stroke-linecap="round"></line>');
+    });
+
+    parts.push('<text x="' + cx + '" y="' + (cy - 8) + '" text-anchor="middle" class="ring-title">Solution Map</text>');
+    parts.push('<text x="' + cx + '" y="' + (cy + 15) + '" text-anchor="middle" class="ring-label">Outer ring: pressure | Inner ring: canal height</text>');
+    svg.innerHTML = parts.join("");
+
+    Array.prototype.forEach.call(svg.querySelectorAll("[data-kind='node']"), function (node) {
+      node.addEventListener("mouseenter", function () {
+        renderSolutionInfo(result, {
+          kind: "node",
+          theta: Number(node.dataset.theta),
+          pressure: Number(node.dataset.pressure),
+          height: Number(node.dataset.height)
+        });
+      });
+    });
+
+    Array.prototype.forEach.call(svg.querySelectorAll("[data-kind='cc']"), function (line) {
+      line.addEventListener("mouseenter", function () {
+        renderSolutionInfo(result, { kind: "cc", loc: line.dataset.loc, flow: Number(line.dataset.flow) });
+      });
+    });
+
+    svg.onmouseleave = function () { renderSolutionInfo(result); };
+    renderSolutionInfo(result);
+    note.textContent = resultDirty
+      ? "Showing the latest solved field. Inputs changed afterward, so the setup preview is newer than this solution map."
+      : "Showing the latest solve.";
+  }
+
+  /* ---------------- inline SVG line chart (replaces Plotly) ---------------- */
+
+  var CHART = {
+    ink: "#ecf6f1",
+    muted: "#b9cbc4",
+    grid: "#263f38",
+    axis: "#42685d",
+    paper: "#111d1a",
+    plotBg: "#0b1715",
+    accent: "#32b8a3"
+  };
+
+  function niceStep(rough) {
+    var exp = Math.floor(Math.log(rough) / Math.LN10);
+    var frac = rough / Math.pow(10, exp);
+    var nice = frac <= 1 ? 1 : frac <= 2 ? 2 : frac <= 5 ? 5 : 10;
+    return nice * Math.pow(10, exp);
+  }
+
+  function axisTicks(low, high, target) {
+    if (!(high > low)) { high = low + 1; }
+    var step = niceStep((high - low) / Math.max(2, target));
+    var start = Math.ceil(low / step - 1e-9) * step;
+    var ticks = [];
+    for (var v = start; v <= high + step * 1e-9 && ticks.length < 40; v += step) {
+      ticks.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+    }
+    return ticks;
+  }
+
+  function tickLabel(value) {
+    var abs = Math.abs(value);
+    if (value === 0) return "0";
+    if (abs >= 1e5 || abs < 1e-3) return value.toExponential(1);
+    var text = value.toFixed(abs >= 100 ? 0 : abs >= 10 ? 1 : abs >= 1 ? 2 : 3);
+    if (text.indexOf(".") >= 0) text = text.replace(/0+$/, "").replace(/\.$/, "");
+    return text;
+  }
+
+  var chartState = null;
+
+  function drawChart(config) {
+    var host = $("plot");
+    var tip = $("chart_tip");
+    var width = Math.max(320, host.clientWidth);
+    var height = Math.max(280, host.clientHeight);
+    var m = { top: 46, right: 26, bottom: config.anatomy ? 74 : 54, left: 74 };
+    var iw = Math.max(40, width - m.left - m.right);
+    var ih = Math.max(40, height - m.top - m.bottom);
+
+    tip.style.opacity = 0;
+
+    var xs = config.x, ys = config.y;
+    var xMin = Math.min.apply(null, xs), xMax = Math.max.apply(null, xs);
+    if (!(xMax > xMin)) { xMin -= 0.5; xMax += 0.5; }
+
+    var finiteYs = ys.filter(function (v) { return isFinite(v); });
+    if (!finiteYs.length) finiteYs = [0, 1];
+    var dataMin = Math.min.apply(null, finiteYs);
+    var dataMax = Math.max.apply(null, finiteYs);
+    var yLow = dataMin >= 0 ? 0 : dataMin - (dataMax - dataMin) * 0.06;
+    var yHigh = dataMax + (dataMax - yLow) * 0.08;
+    if (!(yHigh > yLow)) yHigh = yLow + 1;
+
+    var sx = function (v) { return m.left + (v - xMin) / (xMax - xMin) * iw; };
+    var sy = function (v) { return m.top + ih - (v - yLow) / (yHigh - yLow) * ih; };
+
+    var parts = [];
+    parts.push('<rect x="0" y="0" width="' + width + '" height="' + height + '" fill="' + CHART.paper + '"></rect>');
+    parts.push('<rect x="' + m.left + '" y="' + m.top + '" width="' + iw + '" height="' + ih + '" fill="' + CHART.plotBg + '"></rect>');
+
+    if (config.anatomy) {
+      config.anatomy.regions.forEach(function (region) {
+        var x0 = sx(region.x0), x1 = sx(region.x1);
+        parts.push('<rect x="' + x0.toFixed(2) + '" y="' + m.top + '" width="' + Math.max(0, x1 - x0).toFixed(2) +
+          '" height="' + ih + '" fill="' + region.color + '"></rect>');
+      });
+      config.anatomy.boundaries.forEach(function (value) {
+        var x = sx(value);
+        parts.push('<line x1="' + x.toFixed(2) + '" y1="' + m.top + '" x2="' + x.toFixed(2) + '" y2="' + (m.top + ih) +
+          '" stroke="rgba(150,170,163,0.25)" stroke-width="1" stroke-dasharray="2 4"></line>');
+      });
+    }
+
+    var yTicks = axisTicks(yLow, yHigh, 5);
+    yTicks.forEach(function (value) {
+      var y = sy(value);
+      parts.push('<line x1="' + m.left + '" y1="' + y.toFixed(2) + '" x2="' + (m.left + iw) + '" y2="' + y.toFixed(2) +
+        '" stroke="' + CHART.grid + '" stroke-width="1" opacity="0.85"></line>');
+      parts.push('<text x="' + (m.left - 10) + '" y="' + (y + 4).toFixed(2) + '" text-anchor="end" font-size="11" fill="' + CHART.muted + '">' +
+        tickLabel(value) + '</text>');
+    });
+
+    if (config.anatomy) {
+      // Region names abbreviate to S / N / I / T when the plot is too narrow
+      // for the full words to sit side by side without colliding.
+      var tightAnatomy = (iw / 4) < 74;
+      config.anatomy.ticks.forEach(function (tick, tickIdx) {
+        var x = sx(tick.value);
+        var anchor = tickIdx === 0 ? "start" : (tickIdx === config.anatomy.ticks.length - 1 ? "end" : "middle");
+        parts.push('<line x1="' + x.toFixed(2) + '" y1="' + (m.top + ih) + '" x2="' + x.toFixed(2) + '" y2="' + (m.top + ih + 5) +
+          '" stroke="' + CHART.axis + '" stroke-width="1"></line>');
+        parts.push('<text x="' + x.toFixed(2) + '" y="' + (m.top + ih + 19) + '" text-anchor="' + anchor + '" font-size="11" fill="' + CHART.muted + '">' +
+          tickLabel(tick.value) + '</text>');
+        parts.push('<text x="' + x.toFixed(2) + '" y="' + (m.top + ih + 33) + '" text-anchor="' + anchor + '" font-size="11" font-weight="700" fill="' + CHART.muted + '">' +
+          escapeHtml(tightAnatomy ? tick.label.charAt(0) : tick.label) + '</text>');
+      });
+    } else {
+      axisTicks(xMin, xMax, 6).forEach(function (value) {
+        var x = sx(value);
+        parts.push('<line x1="' + x.toFixed(2) + '" y1="' + m.top + '" x2="' + x.toFixed(2) + '" y2="' + (m.top + ih) +
+          '" stroke="' + CHART.grid + '" stroke-width="1" opacity="0.6"></line>');
+        parts.push('<text x="' + x.toFixed(2) + '" y="' + (m.top + ih + 19) + '" text-anchor="middle" font-size="11" fill="' + CHART.muted + '">' +
+          tickLabel(value) + '</text>');
+      });
+    }
+
+    parts.push('<line x1="' + m.left + '" y1="' + (m.top + ih) + '" x2="' + (m.left + iw) + '" y2="' + (m.top + ih) +
+      '" stroke="' + CHART.axis + '" stroke-width="1"></line>');
+    parts.push('<line x1="' + m.left + '" y1="' + m.top + '" x2="' + m.left + '" y2="' + (m.top + ih) +
+      '" stroke="' + CHART.axis + '" stroke-width="1"></line>');
+
+    var d = "";
+    var pending = true;
+    for (var i = 0; i < xs.length; i++) {
+      if (!isFinite(ys[i])) { pending = true; continue; }
+      d += (pending ? "M " : "L ") + sx(xs[i]).toFixed(2) + " " + sy(ys[i]).toFixed(2) + " ";
+      pending = false;
+    }
+    parts.push('<path d="' + d.trim() + '" fill="none" stroke="' + CHART.accent + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>');
+
+    if (config.markers) {
+      for (var k = 0; k < xs.length; k++) {
+        if (!isFinite(ys[k])) continue;
+        parts.push('<circle cx="' + sx(xs[k]).toFixed(2) + '" cy="' + sy(ys[k]).toFixed(2) + '" r="4" fill="' + CHART.accent + '" stroke="' + CHART.plotBg + '" stroke-width="1.5"></circle>');
+      }
+    }
+
+    parts.push('<text x="' + (width / 2).toFixed(2) + '" y="26" text-anchor="middle" font-size="15" font-weight="700" fill="' + CHART.ink + '">' +
+      escapeHtml(config.title) + '</text>');
+    parts.push('<text x="' + (m.left + iw / 2).toFixed(2) + '" y="' + (height - 8) + '" text-anchor="middle" font-size="12" fill="' + CHART.muted + '">' +
+      escapeHtml(config.xTitle) + '</text>');
+    parts.push('<text transform="translate(16,' + (m.top + ih / 2).toFixed(2) + ') rotate(-90)" text-anchor="middle" font-size="12" fill="' + CHART.muted + '">' +
+      escapeHtml(config.yTitle) + '</text>');
+
+    parts.push('<g id="chart_hover" style="display:none">' +
+      '<line id="chart_cross" y1="' + m.top + '" y2="' + (m.top + ih) + '" stroke="rgba(236,246,241,0.35)" stroke-width="1" stroke-dasharray="3 3"></line>' +
+      '<circle id="chart_dot" r="5" fill="#ffffff" stroke="' + CHART.accent + '" stroke-width="2.5"></circle></g>');
+    parts.push('<rect id="chart_capture" x="' + m.left + '" y="' + m.top + '" width="' + iw + '" height="' + ih + '" fill="transparent"></rect>');
+
+    var svg = '<svg viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" xmlns="http://www.w3.org/2000/svg">' +
+      parts.join("") + '</svg>';
+
+    var existing = host.querySelector("svg");
+    if (existing) host.removeChild(existing);
+    host.insertAdjacentHTML("afterbegin", svg);
+
+    chartState = { config: config, sx: sx, sy: sy, xMin: xMin, xMax: xMax, m: m, iw: iw, ih: ih, width: width, height: height };
+
+    var capture = document.getElementById("chart_capture");
+    var hover = document.getElementById("chart_hover");
+    var cross = document.getElementById("chart_cross");
+    var dot = document.getElementById("chart_dot");
+
+    function onMove(event) {
+      var rect = host.getBoundingClientRect();
+      var scale = chartState.width / rect.width;
+      var px = (event.clientX - rect.left) * scale;
+      var value = xMin + (px - m.left) / iw * (xMax - xMin);
+      var best = 0, bestDist = Infinity;
+      for (var t = 0; t < xs.length; t++) {
+        var dist = Math.abs(xs[t] - value);
+        if (dist < bestDist) { bestDist = dist; best = t; }
+      }
+      if (!isFinite(ys[best])) { hover.style.display = "none"; tip.style.opacity = 0; return; }
+      var cxp = sx(xs[best]), cyp = sy(ys[best]);
+      cross.setAttribute("x1", cxp); cross.setAttribute("x2", cxp);
+      dot.setAttribute("cx", cxp); dot.setAttribute("cy", cyp);
+      hover.style.display = "";
+      tip.innerHTML = "<div>" + escapeHtml(config.hoverX) + " <b>" + fmt(xs[best]) + "</b></div>" +
+        "<div>" + escapeHtml(config.hoverY) + " <b>" + fmt(ys[best]) + "</b></div>";
+      tip.style.opacity = 1;
+      var left = cxp / scale + 14;
+      if (left + tip.offsetWidth > rect.width - 6) left = cxp / scale - tip.offsetWidth - 14;
+      tip.style.left = Math.max(4, left) + "px";
+      tip.style.top = Math.max(4, cyp / scale - tip.offsetHeight - 12) + "px";
+    }
+
+    capture.addEventListener("mousemove", onMove);
+    capture.addEventListener("mouseleave", function () {
+      hover.style.display = "none";
+      tip.style.opacity = 0;
+    });
+    capture.addEventListener("touchmove", function (event) {
+      if (event.touches && event.touches.length) {
+        onMove(event.touches[0]);
+        event.preventDefault();
+      }
+    }, { passive: false });
+  }
+
+  function plotSeries(result) {
+    var kind = $("plot_type").value;
+    var series = result.series[kind];
+    var labels = {
+      pressure: ["Schlemm's Canal Pressure", "Circumferential position (mm)", "Psc (mmHg)", "x (mm)", "Psc (mmHg)"],
+      height: ["Schlemm's Canal Height", "Circumferential position (mm)", "hsc (um)", "x (mm)", "hsc (um)"],
+      jcc: ["Collector Channel Flow", series.x_title || "Collector channel index", "Jcc (uL/min)", "CC", "Jcc (uL/min)"]
+    }[kind];
+
+    drawChart({
+      x: series.x,
+      y: series.y,
+      title: labels[0],
+      xTitle: labels[1],
+      yTitle: labels[2],
+      hoverX: labels[3],
+      hoverY: labels[4],
+      markers: kind === "jcc",
+      anatomy: kind === "jcc" ? null : anatomyAxisGuide(series)
+    });
+  }
+
+  function refreshVisuals() {
+    renderSetupRing(payload(), lastResult);
+    renderSolutionRing(lastResult, lastSolvedPayload || payload());
+  }
+
+  function markResultDirty() {
+    resultDirty = !!lastResult;
+    refreshVisuals();
+  }
+
+  /* ---------------- solve ---------------- */
+
+  function nextFrame() {
+    return new Promise(function (resolve) {
+      requestAnimationFrame(function () { setTimeout(resolve, 0); });
+    });
+  }
+
+  function solve() {
+    var currentPayload = payload();
+    var autoRtm = currentPayload.auto_rtm && currentPayload.mode === "constant flow" &&
+      !String(currentPayload.rtm_profile || "").trim() && !String(currentPayload.rtm_node_values || "").trim();
+    $("status").textContent = autoRtm ? "Solving (auto RTM search)..." : "Solving...";
+    $("solveBtn").disabled = true;
+
+    return nextFrame().then(function () {
+      var started = (window.performance || Date).now();
+      try {
+        var data = AqueousOutflow.solvePayload(currentPayload);
+        var elapsed = Math.round((window.performance || Date).now() - started);
+        lastResult = data;
+        lastSolvedPayload = currentPayload;
+        resultDirty = false;
+        updateMetrics(data.metrics);
+        plotSeries(data);
+        refreshVisuals();
+        var note = statusFromMeta(data.meta);
+        $("status").textContent = (note ? note + " " : "") + "Solved in " + elapsed + " ms.";
+      } catch (err) {
+        $("status").textContent = (err && err.message) ? err.message : String(err);
+      } finally {
+        $("solveBtn").disabled = false;
+      }
+    });
+  }
+
+  /* ---------------- import / export ---------------- */
+
+  function exportModel() {
+    var bundle = {
+      format: "aqueous-outflow-model",
+      version: 1,
+      saved: new Date().toISOString(),
+      inputs: {},
+      results: lastResult ? { metrics: lastResult.metrics, meta: lastResult.meta, series: lastResult.series } : null
+    };
+    FIELD_IDS.forEach(function (id) {
+      var el = $(id);
+      if (!el) return;
+      bundle.inputs[id] = el.type === "checkbox" ? el.checked : el.value;
+    });
+    var blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "aqueous-outflow-model.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  function applyImported(bundle) {
+    var inputs = (bundle && bundle.inputs) || bundle;
+    if (!inputs || typeof inputs !== "object") throw new Error("That file does not contain model inputs.");
+    var applied = 0;
+    FIELD_IDS.forEach(function (id) {
+      if (!(id in inputs)) return;
+      var el = $(id);
+      if (!el) return;
+      if (el.type === "checkbox") el.checked = !!inputs[id];
+      else el.value = inputs[id];
+      applied += 1;
+    });
+    if (!applied) throw new Error("No recognised model fields were found in that file.");
+    updateModeUI();
+    updateInterventionUI();
+    lastResult = null;
+    lastSolvedPayload = null;
+    resultDirty = false;
+    refreshVisuals();
+    $("status").textContent = "Imported " + applied + " settings. Press Solve to run them.";
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  $("solveBtn").addEventListener("click", function () { solve(); });
+  $("plot_type").addEventListener("change", function () {
+    if (lastResult) plotSeries(lastResult);
+    else solve();
+  });
+  $("mode").addEventListener("change", function () { updateModeUI(); markResultDirty(); });
+  $("eye_side").addEventListener("change", function () {
+    refreshVisuals();
+    if (lastResult) plotSeries(lastResult);
+  });
+  $("surgery").addEventListener("change", function () { updateInterventionUI(); markResultDirty(); });
+  $("auto_rtm").addEventListener("change", function () { updateModeUI(); markResultDirty(); });
+  $("rtm_profile").addEventListener("input", function () { updateModeUI(); markResultDirty(); });
+  $("rtm_node_values").addEventListener("input", function () { updateModeUI(); markResultDirty(); });
+  $("trabeculotomies").addEventListener("input", updateInterventionUI);
+  $("yag_holes_list").addEventListener("input", updateInterventionUI);
+  $("stent_nodes").addEventListener("input", updateInterventionUI);
+
+  var SKIP = ["mode", "eye_side", "surgery", "auto_rtm", "rtm_profile", "rtm_node_values",
+    "plot_type", "trabeculotomies", "yag_holes_list", "stent_nodes", "import_file"];
+  Array.prototype.forEach.call(document.querySelectorAll("input, select, textarea"), function (element) {
+    if (SKIP.indexOf(element.id) >= 0) return;
+    element.addEventListener("input", markResultDirty);
+    element.addEventListener("change", markResultDirty);
+  });
+
+  $("exportBtn").addEventListener("click", exportModel);
+  $("import_model").addEventListener("click", function () { $("import_file").click(); });
+  $("import_file").addEventListener("change", function (event) {
+    var file = event.target.files && event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        applyImported(JSON.parse(String(reader.result)));
+      } catch (err) {
+        $("status").textContent = "Import failed: " + ((err && err.message) || err);
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+  });
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (!lastResult) return;
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () { plotSeries(lastResult); }, 120);
+  });
+
+  updateModeUI();
+  updateInterventionUI();
+  refreshVisuals();
+  solve();
+})();
+
+  </script>
+</body>
+</html>
