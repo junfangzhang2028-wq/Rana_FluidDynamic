@@ -104,7 +104,7 @@ def raw_path(size_dir, dataset_key, variant, anchor_kind):
     return size_dir / "raw_arrays" / f"{dataset_key}_{variant}_{anchor_kind}.csv"
 
 
-def plot_size(size_dir, count, frame, anchors):
+def plot_size(size_dir, count, frame, anchors, use_raw=False):
     fig, axes = plt.subplots(3, 4, figsize=(17, 10), dpi=160,
                              sharex=True)
     columns = [("tm_only", "min"), ("tm_only", "max"),
@@ -123,12 +123,20 @@ def plot_size(size_dir, count, frame, anchors):
             sub = frame[(frame["dataset"] == dataset_key) &
                         (frame["variant"] == variant) &
                         (frame["first_anchor_kind"] == anchor_kind)].sort_values("second_start_node")
-            ax.plot(sub["second_angle_deg"], sub["total_delta_iop"],
+            curve_column = "total_delta_iop_raw" if use_raw else "total_delta_iop"
+            ax.plot(sub["second_angle_deg"], sub[curve_column],
                     color=colors[variant], linewidth=1.7, label="After two damages")
-            first_delta = float(sub["first_delta_iop"].iloc[0])
-            ax.axhline(first_delta, color="#555555", linestyle="--", linewidth=1.0,
-                       label="After first damage")
-            ax.axhline(0, color="#222222", linestyle=":", linewidth=0.8)
+            if use_raw:
+                overlap = sub[sub["second_start_node"] == sub["first_start_node"]]
+                if len(overlap) != 1:
+                    raise RuntimeError("Expected one exact-overlap point for raw baseline")
+                first_delta = float(overlap["total_delta_iop_raw"].iloc[0])
+            else:
+                first_delta = float(sub["first_delta_iop"].iloc[0])
+            ax.axhline(0, color="#222222", linestyle="--", linewidth=1.0,
+                       label="Initial baseline (no damage)")
+            ax.axhline(first_delta, color="#f39c12", linestyle="--", linewidth=1.3,
+                       label="Post-first-damage baseline")
             for cc_row, deg in zip(base.DATASETS[dataset_key]["ccs"], cc_degrees):
                 ax.axvline(deg, ymin=0, ymax=0.05, color="#777777",
                            linewidth=2.0 if cc_row[1] == 10 else 0.7, alpha=0.7)
@@ -139,7 +147,9 @@ def plot_size(size_dir, count, frame, anchors):
             ax.set_xlim(-5, 360)
             ax.set_xticks(np.arange(0, 361, 60))
             ax.text(0.015, 0.96,
-                    f"First start: node {first_start} ({first_angle:.0f}°)\nBaseline: {baseline:.3f} mmHg",
+                    f"First start: node {first_start} ({first_angle:.0f}°)\n"
+                    f"Initial baseline: {baseline:.3f} mmHg\n"
+                    f"Post-first baseline: {baseline + first_delta:.3f} mmHg",
                     transform=ax.transAxes, va="top", fontsize=7.3)
             if col == 0:
                 ax.set_ylabel(f"{base.DATASETS[dataset_key]['label']}\nTotal $\\Delta$IOP (mmHg)")
@@ -147,10 +157,14 @@ def plot_size(size_dir, count, frame, anchors):
                 ax.set_xlabel("Second-damage start angle (degrees)")
 
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False)
-    fig.suptitle(f"Second laser-damage distribution: two {count}-node arcs", fontsize=16)
+    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False)
+    data_label = "raw, unsmoothed" if use_raw else "three-point smoothed"
+    fig.suptitle(
+        f"Second laser-damage distribution: two {count}-node arcs ({data_label})",
+        fontsize=16)
     fig.tight_layout(rect=(0, 0.05, 1, 0.96))
-    fig.savefig(size_dir / f"figure13_second_damage_{count:03d}_nodes.png",
+    suffix = "_raw_unsmoothed" if use_raw else ""
+    fig.savefig(size_dir / f"figure13_second_damage_{count:03d}_nodes{suffix}.png",
                 bbox_inches="tight")
     plt.close(fig)
 
@@ -232,6 +246,7 @@ def run_size(md, count):
     pd.DataFrame(anchor_records).to_csv(
         size_dir / f"first_damage_anchors_{count:03d}_nodes.csv", index=False)
     plot_size(size_dir, count, frame, anchor_lookup)
+    plot_size(size_dir, count, frame, anchor_lookup, use_raw=True)
 
 
 def main():
