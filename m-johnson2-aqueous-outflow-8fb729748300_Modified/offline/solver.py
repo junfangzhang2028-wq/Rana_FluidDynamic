@@ -718,7 +718,7 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
         if guess is None:
             pressure = guess_pressure(iop, qt, mode)
 
-        elif len(guess) != N * M:
+        elif len(guess) != N * M + (1 if mode == 'constant flow' else 0):
             print('Invalid guess. Using guess_pressure() method.')
             pressure = guess_pressure(iop, qt, mode)
 
@@ -767,24 +767,17 @@ def solve(iop=7.0, qt=2.0, mode='constant pressure', geometry='ellipse', unconve
 
         while residual > max_error and j <= max_iter:
 
-            if j == 31:
-                print(Fore.YELLOW+'\n\nSwitching to Gauss-Seidel method\n')
-
             if mode == 'constant flow':
                 iop = pressure[-1] + Pev
 
             g = get_g(pressure, iop, mode, geometry, trabeculotomies, sinusotomies, yag_holes, stents, ccs)
 
-            if j <= 30:
-                # The hydraulic matrix is cyclic tridiagonal with one IOP
-                # row/column, so a sparse solve is mathematically equivalent
-                # and much faster than treating the 1201x1201 matrix as dense.
-                new_pressure = spsolve(csr_matrix(g), q)
-
-            else:
-                # If the model fails to converge after 30 iterations of numpy's general solver (Intel LAPACK ?gesv
-                # routine) switch to Gauss-Seidel method to allow convergence
-                new_pressure = gs.solve(g, q, pressure, 10)
+            # The hydraulic matrix is cyclic tridiagonal with one IOP
+            # row/column.  Retain the sparse direct solve for every nonlinear
+            # iteration; the historical dense Gauss-Seidel fallback becomes
+            # prohibitively slow when many deliberately isolated nodes are
+            # present, while solving the same linear system.
+            new_pressure = spsolve(csr_matrix(g), q)
 
             residual = ((np.sum(np.square(new_pressure - pressure)) / len(new_pressure)) ** 0.5) / (iop - Pev)
             pressure = new_pressure

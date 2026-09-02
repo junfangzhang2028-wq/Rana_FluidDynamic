@@ -22,6 +22,7 @@ ENV/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.matplotlib-cache/
 .coverage
 .coverage.*
 htmlcov/
@@ -53,10 +54,16 @@ aq-ui-dist/
 **/node_modules/
 **/venv/
 
+# Simulation outputs (keep solver and reproduction scripts, not generated data/figures)
+paper_reproduction_outputs/
+
 # Local Codex working files and portable runtimes
+.codex-worktrees/
 .codex-ppt-work/
 .codex-runtime/
 .codex-node*.zip
+python_packages/
+.tmp_sheet_inspect/
 
 # Local package-manager caches and preview-only lockfiles
 .pnpm-store/
