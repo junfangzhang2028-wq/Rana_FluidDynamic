@@ -144,6 +144,51 @@
       line-height: 1;
     }
     .import-model-button:hover { background: rgba(50,184,163,0.2); }
+    .cc-source-label {
+      margin: -2px 2px 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .model-source-dialog {
+      width: min(430px, calc(100vw - 32px));
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      color: var(--ink);
+      background: #0b1715;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+    }
+    .model-source-dialog::backdrop { background: rgba(0,0,0,0.68); }
+    .model-source-head {
+      padding: 18px 18px 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(24,45,39,0.98), rgba(17,29,26,0.96));
+    }
+    .model-source-head h2 { margin: 0; font-size: 18px; }
+    .model-source-head p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.4; }
+    .model-source-options { display: grid; gap: 10px; padding: 16px 18px 18px; }
+    .model-source-option {
+      height: auto;
+      min-height: 50px;
+      margin: 0;
+      padding: 11px 13px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--ink);
+      background: rgba(17,29,26,0.92);
+      text-align: left;
+    }
+    .model-source-option:hover { border-color: var(--accent); background: rgba(50,184,163,0.14); }
+    .model-source-option b, .model-source-option span { display: block; }
+    .model-source-option span { margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 400; }
+    .model-source-cancel { margin: 0; background: transparent; border: 1px solid var(--line); }
+    .advanced-button { margin: 0 0 10px; background: rgba(50,184,163,0.12); border-color: var(--line); }
+    .advanced-dialog { width: min(760px, calc(100vw - 32px)); max-height: min(86vh, 900px); }
+    .advanced-dialog-body { padding: 16px 18px 6px; overflow: auto; max-height: calc(86vh - 126px); }
+    .advanced-dialog-actions { padding: 0 18px 18px; }
+    .procedure-slot { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .procedure-slot:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
     .sub {
       margin: 0 0 18px;
       color: var(--muted);
@@ -165,6 +210,7 @@
       gap: 12px;
       list-style: none;
       cursor: pointer;
+      user-select: none;
       padding: 12px 14px;
       user-select: none;
       background: linear-gradient(180deg, rgba(24,45,39,0.96), rgba(17,29,26,0.92));
@@ -430,8 +476,31 @@
     <aside>
       <div class="aside-scroll">
         <h1>Aqueous Outflow Model</h1>
-        <button type="button" class="import-model-button" id="import_model" title="Load a previously exported model file.">Import eye model file</button>
+        <button type="button" class="import-model-button" id="import_model" title="Choose a built-in collector-channel distribution or import a model file.">Import / choose CC model</button>
+        <div class="cc-source-label" id="cc_source_label">CC distribution: Uniform</div>
+        <button type="button" class="advanced-button" id="advanced_settings">Advanced settings</button>
         <input id="import_file" type="file" accept="application/json,.json" class="hidden" />
+        <dialog class="model-source-dialog" id="model_source_dialog" aria-labelledby="model_source_title">
+          <div class="model-source-head">
+            <h2 id="model_source_title">Choose collector-channel model</h2>
+            <p>This changes the CC distribution used by subsequent calculations. Other model inputs are preserved.</p>
+          </div>
+          <div class="model-source-options">
+            <button type="button" class="model-source-option" data-cc-source="uniform"><b>Uniform distribution</b><span>Evenly spaced channels using the current N and M settings.</span></button>
+            <button type="button" class="model-source-option" data-cc-source="human"><b>Default human eye</b><span>Measured human donor distribution: 29 channels.</span></button>
+            <button type="button" class="model-source-option" data-cc-source="mouse"><b>Default mouse eye</b><span>Mouse digital-twin distribution: 34 channels.</span></button>
+            <button type="button" class="model-source-option" data-cc-source="file"><b>Choose your own file</b><span>Load a previously exported JSON model file.</span></button>
+            <button type="button" class="model-source-cancel" id="model_source_cancel">Cancel</button>
+          </div>
+        </dialog>
+        <dialog class="model-source-dialog advanced-dialog" id="advanced_dialog" aria-labelledby="advanced_title">
+          <div class="model-source-head">
+            <h2 id="advanced_title">Advanced settings</h2>
+            <p>Detailed constants, segment profiles, collector channels, and stent geometry.</p>
+          </div>
+          <div class="advanced-dialog-body" id="advanced_dialog_body"></div>
+          <div class="advanced-dialog-actions"><button type="button" class="model-source-cancel" id="advanced_close">Close</button></div>
+        </dialog>
         <details class="panel" id="panel_solver" open>
           <summary>
             <div class="panel-head">
@@ -482,49 +551,95 @@
         <details class="panel" id="panel_intervention" open>
           <summary>
             <div class="panel-head">
-              <h2>Intervention</h2>
-              <p>Collector-channel layout and surgery-specific inputs.</p>
+              <h2>Additional Procedure</h2>
+              <p>Add up to three procedures, each with its own position.</p>
             </div>
             <span class="panel-toggle">Main</span>
           </summary>
           <div class="section-body">
-            <label>Surgery</label>
+            <label>Procedure type</label>
             <select id="surgery">
               <option>None</option>
               <option>Trabeculotomy</option>
+              <option>Sinusotomy</option>
               <option>YAG holes</option>
               <option>iStent</option>
+              <option>Laser damage — TM only</option>
+              <option>Laser damage — full node</option>
             </select>
-            <div id="surgery_defaults" class="grid2">
+            <div id="trab_position_wrap">
+              <label>Position ranges</label>
+              <textarea id="trabeculotomies" placeholder="Example: 0-99, 300-399"></textarea>
+              <div id="trabeculotomy_hint" class="hint">SC node ranges for the trabeculotomy.</div>
+            </div>
+            <div id="trab_defaults" class="grid2">
               <div id="trab_hours_wrap">
-                <label>Trab hours</label>
+                <label>Preset if position is blank</label>
                 <select id="trab_hours">
                   <option>1</option>
                   <option>4</option>
                   <option>12</option>
                 </select>
               </div>
-              <div id="yag_count_wrap">
-                <label>YAG holes</label><input id="yag_holes" type="number" step="1" value="2" />
-              </div>
             </div>
             <input id="stent_node" type="hidden" value="0" />
-
-            <label>Trabeculotomy ranges</label>
-            <textarea id="trabeculotomies" placeholder="Example: 0-99, 300-399"></textarea>
-            <div id="trabeculotomy_hint" class="hint">Ranges are SC node indexes. Leave blank to use Trab hours when Surgery is Trabeculotomy.</div>
-
-            <label>Sinusotomy ranges</label>
-            <textarea id="sinusotomies" placeholder="Example: 120-180, 620-700"></textarea>
-            <div class="hint">Sinusotomy ranges can be combined with any selected surgery.</div>
-
-            <label>YAG hole nodes</label>
-            <input id="yag_holes_list" type="text" placeholder="Example: 0, 200, 400" />
-            <div id="yag_nodes_hint" class="hint">Leave blank to use the YAG hole count above when Surgery is YAG holes.</div>
-
-            <label>iStent nodes</label>
-            <input id="stent_nodes" type="text" placeholder="Example: 0, 300, 600" />
-            <div id="stent_nodes_hint" class="hint">Each node gets the stent model configured below. If Surgery is iStent and this is blank, node 0 is used.</div>
+            <div id="sinus_position_wrap">
+              <label>Position ranges</label>
+              <textarea id="sinusotomies" placeholder="Example: 120-180, 620-700"></textarea>
+              <div class="hint">SC node ranges for the sinusotomy.</div>
+            </div>
+            <div id="yag_position_wrap">
+              <label>Position nodes</label>
+              <input id="yag_holes_list" type="text" placeholder="Example: 0, 200, 400" />
+              <div id="yag_nodes_hint" class="hint">Enter one or more SC node indexes, separated by commas.</div>
+              <label>Preset count if positions are blank</label>
+              <input id="yag_holes" type="number" step="1" min="1" max="6" value="2" />
+            </div>
+            <div id="stent_position_wrap">
+              <label>Position nodes</label>
+              <input id="stent_nodes" type="text" placeholder="Example: 0, 300, 600" />
+              <div id="stent_nodes_hint" class="hint">Each listed node receives the stent configured below. Node 0 is used if blank.</div>
+            </div>
+            <div id="damage_position_wrap">
+              <div class="grid2">
+                <div><label>Start node</label><input id="damage_start" type="number" step="1" min="0" value="0" /></div>
+                <div><label>Damaged nodes</label>
+                  <select id="damage_count">
+                    <option>1</option>
+                    <option>5</option>
+                    <option>25</option>
+                    <option>100</option>
+                  </select>
+                </div>
+              </div>
+              <div id="damage_hint" class="hint">Damage proceeds clockwise from the start node and wraps around node 0 when needed.</div>
+            </div>
+            <div class="procedure-slot" id="procedure2_wrap">
+              <label>Second procedure</label>
+              <select id="surgery2">
+                <option>None</option><option>Trabeculotomy</option><option>Sinusotomy</option><option>YAG holes</option><option>iStent</option>
+                <option>Laser damage — TM only</option><option>Laser damage — full node</option>
+              </select>
+              <div id="procedure2_details" class="hidden">
+                <label id="procedure2_position_label">Position</label>
+                <input id="procedure2_positions" type="text" placeholder="Node, node list, or start-end ranges" />
+                <div class="grid2" id="procedure2_amount_wrap"><div><label id="procedure2_amount_label">Amount / preset</label><input id="procedure2_amount" type="number" min="1" step="1" value="1" /></div></div>
+                <div id="procedure2_hint" class="hint"></div>
+              </div>
+            </div>
+            <div class="procedure-slot" id="procedure3_wrap">
+              <label>Third procedure</label>
+              <select id="surgery3">
+                <option>None</option><option>Trabeculotomy</option><option>Sinusotomy</option><option>YAG holes</option><option>iStent</option>
+                <option>Laser damage — TM only</option><option>Laser damage — full node</option>
+              </select>
+              <div id="procedure3_details" class="hidden">
+                <label id="procedure3_position_label">Position</label>
+                <input id="procedure3_positions" type="text" placeholder="Node, node list, or start-end ranges" />
+                <div class="grid2" id="procedure3_amount_wrap"><div><label id="procedure3_amount_label">Amount / preset</label><input id="procedure3_amount" type="number" min="1" step="1" value="1" /></div></div>
+                <div id="procedure3_hint" class="hint"></div>
+              </div>
+            </div>
           </div>
         </details>
 
@@ -722,6 +837,7 @@
                 <div class="legend-item"><span class="swatch" style="background: var(--sinus);"></span><span>Sinusotomy</span></div>
                 <div class="legend-item"><span class="swatch" style="background: var(--stent);"></span><span>Stent span</span></div>
                 <div class="legend-item"><span class="swatch" style="background: var(--yag);"></span><span>YAG hole</span></div>
+                <div class="legend-item"><span class="swatch" style="background: #e85d5d;"></span><span>Laser damage</span></div>
               </div>
             </div>
           </section>
@@ -2117,7 +2233,9 @@ var AqueousOutflow = (function () {
     }
 
     var xPressure = [];
-    for (var p = 0; p < pressure.length; p++) xPressure.push(p * S.dx / 1000.0);
+    for (var p = 0; p < pressure.length; p++) {
+      xPressure.push(pressure.length > 1 ? p * 360.0 / (pressure.length - 1) : 0);
+    }
 
     var xJcc, jccTitle;
     if (ccs && ccs.length === jcc.length) {
@@ -2188,6 +2306,8 @@ var AqueousOutflow = (function () {
 
     var totalNodes = (kwargs.n !== undefined ? kwargs.n : 30) * (kwargs.m !== undefined ? kwargs.m : 40);
     var maxNodes = totalNodes;
+    var ccs = parseCcs(payload.ccs, maxNodes);
+    opts.ccs = ccs;
 
     var rtmNodeValues = parseFullValueArray(payload.rtm_node_values, totalNodes, "TM full node array", false);
     var variableRtmProfile = parseSegmentProfile(payload.rtm_profile, 12, "TM resistance", false);
@@ -2279,13 +2399,12 @@ var AqueousOutflow = (function () {
     }
 
     var stents = null;
-    var ccs = parseCcs(payload.ccs, maxNodes);
-    var explicitTrab = parseRanges(payload.trabeculotomies);
-    var explicitSinus = parseRanges(payload.sinusotomies);
-    var explicitYag = parseIntList(payload.yag_holes_list);
-    var stentNodesText = payload.stent_nodes;
+    var explicitTrab = surgery === "Trabeculotomy" ? parseRanges(payload.trabeculotomies) : [];
+    var explicitSinus = surgery === "Sinusotomy" ? parseRanges(payload.sinusotomies) : [];
+    var explicitYag = surgery === "YAG holes" ? parseIntList(payload.yag_holes_list) : [];
+    var stentNodesText = surgery === "iStent" ? payload.stent_nodes : "";
     if (isBlank(stentNodesText) && surgery === "iStent") stentNodesText = payload.stent_node || "0";
-    var explicitStents = parseStentNodes(stentNodesText, payload);
+    var explicitStents = surgery === "iStent" ? parseStentNodes(stentNodesText, payload) : [];
 
     if (explicitTrab.length) {
       meta.trabeculotomies = explicitTrab.map(function (r) { return { start: r[0], end: r[1] }; });
@@ -2296,6 +2415,9 @@ var AqueousOutflow = (function () {
       meta.trabeculotomy_source = "default_hours";
     }
 
+    if (surgery === "Sinusotomy" && !explicitSinus.length) {
+      throw new Error("Enter at least one sinusotomy position range.");
+    }
     if (explicitSinus.length) {
       meta.sinusotomies = explicitSinus.map(function (r) { return { start: r[0], end: r[1] }; });
     }
@@ -2313,36 +2435,136 @@ var AqueousOutflow = (function () {
     if (ccs) opts.ccs = ccs;
     if (explicitStents.length) { stents = explicitStents; opts.stents = stents; }
 
-    var solution;
-    if (surgery === "Trabeculotomy") {
-      var trabOpts = Object.assign({}, opts);
-      if (explicitTrab.length) trabOpts.trabeculotomies = explicitTrab;
-      solution = solveTrabeculotomy(
-        finiteFloat(payload.iop, 7.0),
-        finiteFloat(payload.qt, 2.0),
-        Math.trunc(finiteFloat(payload.trab_hours, 1)),
-        trabOpts
-      );
-    } else if (surgery === "YAG holes") {
-      var yagOpts = Object.assign({}, opts);
-      yagOpts.kwargs = Object.assign({}, kwargs);
-      delete yagOpts.kwargs.n;
-      solution = solveYagHoles(
-        finiteFloat(payload.qt, 2.0),
-        finiteFloat(payload.iop, 7.0),
-        Math.trunc(finiteFloat(payload.yag_holes, 2)),
-        explicitYag.length ? explicitYag : [],
-        yagOpts
-      );
-    } else if (mode === "constant pressure") {
-      if (explicitTrab.length) opts.trabeculotomies = explicitTrab;
-      if (explicitYag.length) opts.yag_holes = explicitYag;
-      solution = solveCP(finiteFloat(payload.iop, 7.0), opts);
-    } else {
-      if (explicitTrab.length) opts.trabeculotomies = explicitTrab;
-      if (explicitYag.length) opts.yag_holes = explicitYag;
-      solution = solveCF(finiteFloat(payload.qt, 2.0), opts);
+    var isTmDamage = surgery === "Laser damage — TM only";
+    var isFullDamage = surgery === "Laser damage — full node";
+    if (isTmDamage || isFullDamage) {
+      var damageStart = Math.trunc(finiteFloat(payload.damage_start, 0));
+      var damageCount = Math.trunc(finiteFloat(payload.damage_count, 1));
+      if (damageStart < 0 || damageStart >= totalNodes) {
+        throw new Error("Damage start node must be between 0 and " + (totalNodes - 1) + ".");
+      }
+      if (damageCount < 1 || damageCount > totalNodes) {
+        throw new Error("Damaged node count must be between 1 and " + totalNodes + ".");
+      }
+
+      var damagedNodes = [];
+      var damagedLookup = {};
+      for (var damageIndex = 0; damageIndex < damageCount; damageIndex++) {
+        var damagedNode = mod(damageStart + damageIndex, totalNodes);
+        damagedNodes.push(damagedNode);
+        damagedLookup[damagedNode] = true;
+      }
+
+      var damageRtm;
+      if (opts.variable_rtm && kwargs.rtm !== undefined && kwargs.rtm !== null) {
+        damageRtm = Float64Array.from(kwargs.rtm);
+      } else if (kwargs.rtm !== undefined && kwargs.rtm !== null) {
+        damageRtm = filled(totalNodes, Number(kwargs.rtm) * totalNodes);
+      } else {
+        damageRtm = filled(totalNodes, 2.0 * totalNodes);
+      }
+      for (var damagedRtmIndex = 0; damagedRtmIndex < damagedNodes.length; damagedRtmIndex++) {
+        damageRtm[damagedNodes[damagedRtmIndex]] = Infinity;
+      }
+      opts.variable_rtm = true;
+      kwargs.rtm = damageRtm;
+
+      if (isFullDamage) {
+        if (!ccs) {
+          ccs = [];
+          var defaultM = kwargs.m !== undefined ? kwargs.m : 40;
+          for (var ccNode = 0; ccNode < totalNodes; ccNode += defaultM) ccs.push([ccNode, 1.0]);
+        }
+        ccs = ccs.map(function (cc) { return [cc[0], damagedLookup[cc[0]] ? 0.0 : cc[1]]; });
+        opts.ccs = ccs;
+
+        var damageGsc = kwargs.gsc_override !== undefined && kwargs.gsc_override !== null
+          ? Float64Array.from(kwargs.gsc_override) : filled(totalNodes, NaN);
+        for (var damagedEdgeIndex = 0; damagedEdgeIndex < damagedNodes.length; damagedEdgeIndex++) {
+          var node = damagedNodes[damagedEdgeIndex];
+          damageGsc[mod(node - 1, totalNodes)] = 0.0;
+          damageGsc[node] = 0.0;
+        }
+        kwargs.gsc_override = damageGsc;
+        meta.gsc_override_source = "laser_damage";
+        meta.gsc_override_count = damageCount + 1;
+      }
+
+      meta.damage_mode = isFullDamage ? "full_node" : "tm_only";
+      if (isFullDamage) meta.full_damage_nodes = damagedNodes.slice();
+      meta.damage_start = damageStart;
+      meta.damage_count = damageCount;
+      meta.damaged_nodes = damagedNodes;
+      meta.rtm_source = "laser_damage";
+      meta.tm_node_count = damageCount;
     }
+
+    var combinedTrab = (meta.trabeculotomies || []).map(function (r) { return [r.start, r.end]; });
+    var combinedSinus = (meta.sinusotomies || []).map(function (r) { return [r.start, r.end]; });
+    var combinedYag = (meta.yag_holes || []).slice();
+    var combinedStents = explicitStents.slice();
+    var procedureNames = surgery === "None" ? [] : [surgery];
+
+    function addExtraDamage(startValue, countValue, fullNode) {
+      var start = Math.trunc(finiteFloat(startValue, 0));
+      var count = Math.trunc(finiteFloat(countValue, 1));
+      if (start < 0 || start >= totalNodes) throw new Error("Damage start node must be between 0 and " + (totalNodes - 1) + ".");
+      if (count < 1 || count > totalNodes) throw new Error("Damaged node count must be between 1 and " + totalNodes + ".");
+      var nodes = [], lookup = {};
+      for (var di = 0; di < count; di++) { var dn = mod(start + di, totalNodes); nodes.push(dn); lookup[dn] = true; }
+      var damageRtm = opts.variable_rtm && kwargs.rtm != null ? Float64Array.from(kwargs.rtm)
+        : (kwargs.rtm != null ? filled(totalNodes, Number(kwargs.rtm) * totalNodes) : filled(totalNodes, 2.0 * totalNodes));
+      nodes.forEach(function (node) { damageRtm[node] = Infinity; });
+      opts.variable_rtm = true; kwargs.rtm = damageRtm;
+      if (fullNode) {
+        if (!ccs) { ccs = []; var dm = kwargs.m !== undefined ? kwargs.m : 40; for (var cn = 0; cn < totalNodes; cn += dm) ccs.push([cn, 1.0]); }
+        ccs = ccs.map(function (cc) { return [cc[0], lookup[cc[0]] ? 0.0 : cc[1]]; });
+        opts.ccs = ccs;
+        var dg = kwargs.gsc_override != null ? Float64Array.from(kwargs.gsc_override) : filled(totalNodes, NaN);
+        nodes.forEach(function (node) { dg[mod(node - 1, totalNodes)] = 0.0; dg[node] = 0.0; });
+        kwargs.gsc_override = dg;
+        meta.full_damage_nodes = (meta.full_damage_nodes || []).concat(nodes);
+      }
+      meta.damaged_nodes = (meta.damaged_nodes || []).concat(nodes);
+      meta.damage_mode = (meta.full_damage_nodes || []).length ? "full_node" : "tm_only";
+      meta.damage_count = meta.damaged_nodes.length;
+      meta.rtm_source = "laser_damage";
+    }
+
+    [2, 3].forEach(function (slot) {
+      var type = payload["surgery" + slot] || "None";
+      if (type === "None") return;
+      procedureNames.push(type);
+      var positions = payload["procedure" + slot + "_positions"];
+      var amount = Math.trunc(finiteFloat(payload["procedure" + slot + "_amount"], 1));
+      if (type === "Trabeculotomy") {
+        var tr = parseRanges(positions);
+        if (!tr.length) tr = defaultTrabeculotomies(amount);
+        combinedTrab = combinedTrab.concat(tr);
+      } else if (type === "Sinusotomy") {
+        var sr = parseRanges(positions);
+        if (!sr.length) throw new Error("Enter at least one sinusotomy position range for procedure " + slot + ".");
+        combinedSinus = combinedSinus.concat(sr);
+      } else if (type === "YAG holes") {
+        var yh = parseIntList(positions);
+        if (!yh.length) yh = defaultYagHoles(amount);
+        combinedYag = combinedYag.concat(yh);
+      } else if (type === "iStent") {
+        combinedStents = combinedStents.concat(parseStentNodes(isBlank(positions) ? "0" : positions, payload));
+      } else if (type.indexOf("Laser damage") === 0) {
+        addExtraDamage(positions, amount, type === "Laser damage — full node");
+      }
+    });
+
+    if (combinedTrab.length) { opts.trabeculotomies = combinedTrab; meta.trabeculotomies = combinedTrab.map(function (r) { return { start: r[0], end: r[1] }; }); }
+    if (combinedSinus.length) { opts.sinusotomies = combinedSinus; meta.sinusotomies = combinedSinus.map(function (r) { return { start: r[0], end: r[1] }; }); }
+    if (combinedYag.length) { opts.yag_holes = combinedYag; meta.yag_holes = combinedYag.slice(); }
+    if (combinedStents.length) { stents = combinedStents; opts.stents = stents; meta.stent_count = stents.length; }
+    meta.procedures = procedureNames;
+
+    var solution = mode === "constant pressure"
+      ? solveCP(finiteFloat(payload.iop, 7.0), opts)
+      : solveCF(finiteFloat(payload.qt, 2.0), opts);
 
     return solutionToJsonable(solution, stents, ccs, meta);
   }
@@ -2382,7 +2604,8 @@ var AqueousOutflow = (function () {
     "etm", "h0", "h0_profile", "hs", "rcc", "qu", "max_error", "beta", "unconventional",
     "ccs", "rtm_profile", "rtm_node_values", "rtm_node_overrides", "h0_node_values",
     "h0_node_overrides", "gsc_multiplier", "gsc_override", "surgery", "trab_hours",
-    "trabeculotomies", "sinusotomies", "yag_holes", "yag_holes_list", "stent_node",
+    "trabeculotomies", "sinusotomies", "yag_holes", "yag_holes_list", "damage_start", "damage_count", "stent_node",
+    "surgery2", "procedure2_positions", "procedure2_amount", "surgery3", "procedure3_positions", "procedure3_amount",
     "stent_nodes", "stent_name", "stent_length", "stent_loc_inlet", "stent_width",
     "stent_height", "stent_l_before", "stent_l_after", "stent_h_after", "stent_g_inlet",
     "stent_geometry", "stent_two_way", "stent_n_windows", "stent_l_window",
@@ -2423,6 +2646,14 @@ var AqueousOutflow = (function () {
       sinusotomies: $("sinusotomies").value,
       yag_holes: $("yag_holes").value,
       yag_holes_list: $("yag_holes_list").value,
+      damage_start: $("damage_start").value,
+      damage_count: $("damage_count").value,
+      surgery2: $("surgery2").value,
+      procedure2_positions: $("procedure2_positions").value,
+      procedure2_amount: $("procedure2_amount").value,
+      surgery3: $("surgery3").value,
+      procedure3_positions: $("procedure3_positions").value,
+      procedure3_amount: $("procedure3_amount").value,
       stent_node: $("stent_node").value,
       stent_nodes: $("stent_nodes").value,
       stent_name: $("stent_name").value,
@@ -2722,11 +2953,12 @@ var AqueousOutflow = (function () {
     var totalNodes = Math.max(1, Math.round(metaNodes || seriesNodes || fallbackNodes));
     var ccs = inferCollectorNodes(currentPayload, result, totalNodes);
 
+    var selectedProcedure = currentPayload.surgery || "None";
     var trabeculotomies;
     if (result && result.meta && result.meta.trabeculotomies && result.meta.trabeculotomies.length) {
       trabeculotomies = result.meta.trabeculotomies;
     } else {
-      trabeculotomies = parseRangesText(currentPayload.trabeculotomies);
+      trabeculotomies = selectedProcedure === "Trabeculotomy" ? parseRangesText(currentPayload.trabeculotomies) : [];
       if (!trabeculotomies.length && currentPayload.surgery === "Trabeculotomy") {
         trabeculotomies = defaultTrabeculotomies(Math.round(numberValue(currentPayload.trab_hours, 1) || 1));
       }
@@ -2736,7 +2968,7 @@ var AqueousOutflow = (function () {
     if (result && result.meta && result.meta.yag_holes && result.meta.yag_holes.length) {
       yagHoles = result.meta.yag_holes;
     } else {
-      yagHoles = parseNodeListText(currentPayload.yag_holes_list);
+      yagHoles = selectedProcedure === "YAG holes" ? parseNodeListText(currentPayload.yag_holes_list) : [];
       if (!yagHoles.length && currentPayload.surgery === "YAG holes") {
         yagHoles = defaultYagHoles(Math.round(numberValue(currentPayload.yag_holes, 2) || 2));
       }
@@ -2746,7 +2978,7 @@ var AqueousOutflow = (function () {
     if (result && result.meta && result.meta.stents && result.meta.stents.length) {
       stents = result.meta.stents;
     } else {
-      var nodesText = currentPayload.stent_nodes;
+      var nodesText = selectedProcedure === "iStent" ? currentPayload.stent_nodes : "";
       if (!nodesText && currentPayload.surgery === "iStent") nodesText = currentPayload.stent_node || "0";
       var span = estimatePendingStentSpan(currentPayload);
       stents = parseNodeListText(nodesText).map(function (loc) {
@@ -2762,18 +2994,34 @@ var AqueousOutflow = (function () {
 
     var nSegments = Math.max(1, Math.round(numberValue(currentPayload.n, ccs.length || 30) || 30));
     var metaSinus = result && result.meta ? result.meta.sinusotomies : null;
+    var damageMeta = result && result.meta && result.meta.damaged_nodes ? result.meta.damaged_nodes : null;
+    var damageNodes = [];
+    if (damageMeta && damageMeta.length) {
+      damageNodes = damageMeta.slice();
+    } else if (selectedProcedure.indexOf("Laser damage") === 0) {
+      var damageStart = normalizeNode(numberValue(currentPayload.damage_start, 0), totalNodes);
+      var damageCount = Math.max(1, Math.round(numberValue(currentPayload.damage_count, 1) || 1));
+      for (var damageIndex = 0; damageIndex < damageCount; damageIndex++) {
+        damageNodes.push(normalizeNode(damageStart + damageIndex, totalNodes));
+      }
+    }
 
     return {
       totalNodes: totalNodes,
       ccs: ccs,
       trabeculotomies: trabeculotomies,
-      sinusotomies: metaSinus || parseRangesText(currentPayload.sinusotomies),
+      sinusotomies: metaSinus || (selectedProcedure === "Sinusotomy" ? parseRangesText(currentPayload.sinusotomies) : []),
       yagHoles: yagHoles,
       stents: stents,
+      damageNodes: damageNodes,
+      damageMode: result && result.meta ? result.meta.damage_mode : (selectedProcedure.indexOf("full node") >= 0 ? "full_node" : "tm_only"),
       tmProfile: parseProfileValues(currentPayload.rtm_node_values, totalNodes) || parseProfileValues(currentPayload.rtm_profile, 12),
       scProfile: parseProfileValues(currentPayload.h0_node_values, totalNodes) || parseProfileValues(currentPayload.h0_profile, nSegments),
       hasGscControl: !!(String(currentPayload.gsc_multiplier || "").trim() || String(currentPayload.gsc_override || "").trim()),
-      surgery: currentPayload.surgery
+      surgery: selectedProcedure,
+      procedures: result && result.meta && result.meta.procedures
+        ? result.meta.procedures
+        : [currentPayload.surgery, currentPayload.surgery2, currentPayload.surgery3].filter(function (type) { return type && type !== "None"; })
     };
   }
 
@@ -2783,8 +3031,11 @@ var AqueousOutflow = (function () {
     var labels = eyeLabels();
     var lines = [];
     lines.push("<div><b>" + model.ccs.length + "</b> collector channels across <b>" + model.totalNodes + "</b> SC nodes.</div>");
-    lines.push("<div>Interventions: trab <b>" + model.trabeculotomies.length + "</b>, sinus <b>" + model.sinusotomies.length +
-      "</b>, YAG <b>" + model.yagHoles.length + "</b>, stents <b>" + model.stents.length + "</b>.</div>");
+    lines.push("<div>Additional procedures: <b>" + escapeHtml(model.procedures.length ? model.procedures.join(" + ") : "None") + "</b>.</div>");
+    if (model.damageNodes.length) {
+      lines.push("<div>Laser damage: <b>" + model.damageNodes.length + " nodes</b> (" +
+        (model.damageMode === "full_node" ? "TM + CC + SC" : "TM only") + ").</div>");
+    }
     lines.push("<div>Profiles: TM " + (model.tmProfile ? "<b>variable</b>" : "scalar") + " | SC height " +
       (model.scProfile ? "<b>variable</b>" : "scalar") + ".</div>");
     if (model.hasGscControl) lines.push("<div>SC circumferential conductance: <b>customized</b>.</div>");
@@ -2861,6 +3112,15 @@ var AqueousOutflow = (function () {
       parts.push('<circle cx="' + point.x.toFixed(2) + '" cy="' + point.y.toFixed(2) + '" r="5.5" fill="#0b1715" stroke="#ff6fa7" stroke-width="3"></circle>');
     });
 
+    model.damageNodes.forEach(function (node) {
+      var start = 360 * normalizeNode(node, model.totalNodes) / model.totalNodes;
+      var span = Math.max(0.8, 360 / model.totalNodes);
+      parts.push('<path d="' + arcPath(cx, cy, tmRadius, start, span) + '" stroke="#e85d5d" stroke-width="20" fill="none" opacity="0.98"></path>');
+      if (model.damageMode === "full_node") {
+        parts.push('<path d="' + arcPath(cx, cy, scRadius, start, span) + '" stroke="#e85d5d" stroke-width="24" fill="none" opacity="0.76"></path>');
+      }
+    });
+
     model.ccs.forEach(function (cc) {
       var angle = 360 * normalizeNode(cc.loc, model.totalNodes) / model.totalNodes;
       var inner = polarPoint(cx, cy, ccRadius - 3, angle);
@@ -2908,22 +3168,43 @@ var AqueousOutflow = (function () {
     var hasYagNodes = $("yag_holes_list").value.trim().length > 0;
     var hasStentNodes = $("stent_nodes").value.trim().length > 0;
 
-    $("trab_hours_wrap").classList.toggle("hidden", surgery !== "Trabeculotomy");
-    $("yag_count_wrap").classList.toggle("hidden", surgery !== "YAG holes");
+    $("trab_position_wrap").classList.toggle("hidden", surgery !== "Trabeculotomy");
+    $("trab_defaults").classList.toggle("hidden", surgery !== "Trabeculotomy");
+    $("sinus_position_wrap").classList.toggle("hidden", surgery !== "Sinusotomy");
+    $("yag_position_wrap").classList.toggle("hidden", surgery !== "YAG holes");
+    $("stent_position_wrap").classList.toggle("hidden", surgery !== "iStent");
+    $("damage_position_wrap").classList.toggle("hidden", surgery.indexOf("Laser damage") !== 0);
 
     $("trabeculotomy_hint").textContent = surgery === "Trabeculotomy"
       ? (hasTrabRanges ? "Explicit ranges will override the preset clock-hour trabeculotomy." : "Leave blank to use the selected Trab hours preset.")
-      : "Optional SC node ranges. This stays available even if Surgery is not set to Trabeculotomy.";
+      : "SC node ranges for the trabeculotomy.";
 
     $("yag_nodes_hint").textContent = surgery === "YAG holes"
       ? (hasYagNodes ? "Explicit YAG node locations will override the YAG hole count preset." : "Leave blank to use the YAG hole count above.")
-      : "Optional explicit YAG node locations.";
+      : "Enter one or more SC node indexes, separated by commas.";
 
     $("stent_nodes_hint").textContent = surgery === "iStent"
       ? (hasStentNodes ? "All listed nodes will receive the stent model from the editor below." : "If left blank, node 0 will receive one stent.")
-      : "Optional explicit stent nodes. If you fill these, the stent editor below is used even without selecting iStent surgery.";
+      : "Each listed node receives the stent configured below.";
 
-    if (surgery === "iStent" || hasStentNodes) $("panel_stent").open = true;
+    if (surgery === "iStent") $("panel_stent").open = true;
+
+    [2, 3].forEach(function (slot) {
+      var type = $("surgery" + slot).value;
+      var active = type !== "None";
+      $("procedure" + slot + "_details").classList.toggle("hidden", !active);
+      if (!active) return;
+      var isRanges = type === "Trabeculotomy" || type === "Sinusotomy";
+      var isDamage = type.indexOf("Laser damage") === 0;
+      $("procedure" + slot + "_position_label").textContent = isRanges ? "Position ranges" : (isDamage ? "Start node" : "Position nodes");
+      $("procedure" + slot + "_positions").placeholder = isRanges ? "Example: 0-99, 300-399" : (isDamage ? "Example: 250" : "Example: 0, 300, 600");
+      $("procedure" + slot + "_amount_wrap").classList.toggle("hidden", type === "Sinusotomy" || type === "iStent");
+      $("procedure" + slot + "_amount_label").textContent = type === "Trabeculotomy" ? "Preset hours if blank" : (type === "YAG holes" ? "Preset count if blank" : "Damaged nodes");
+      $("procedure" + slot + "_hint").textContent = isRanges
+        ? (type === "Trabeculotomy" ? "Use ranges, or leave blank for a 1/4/12-hour preset." : "Enter at least one node range.")
+        : (isDamage ? "Damage proceeds clockwise from the start node." : "Enter comma-separated node indexes; iStent uses node 0 if blank.");
+      if (type === "iStent") $("panel_stent").open = true;
+    });
   }
 
   function statusFromMeta(meta) {
@@ -2941,6 +3222,8 @@ var AqueousOutflow = (function () {
     else if (meta.gsc_multiplier_override_count) parts.push("SC conductance multiplier overrides applied: " + meta.gsc_multiplier_override_count + ".");
     if (meta.gsc_override_count) parts.push("Full SC conductance override array used: " + meta.gsc_override_count + " segments.");
     else if (meta.gsc_override_range_count) parts.push("SC conductance overrides applied: " + meta.gsc_override_range_count + ".");
+    if (meta.damage_count) parts.push("Laser damage applied: " + meta.damage_count + " nodes from node " + meta.damage_start + " (" +
+      (meta.damage_mode === "full_node" ? "TM + CC + SC" : "TM only") + ").");
     return parts.join(" ");
   }
 
@@ -3260,8 +3543,8 @@ var AqueousOutflow = (function () {
     var kind = $("plot_type").value;
     var series = result.series[kind];
     var labels = {
-      pressure: ["Schlemm's Canal Pressure", "Circumferential position (mm)", "Psc (mmHg)", "x (mm)", "Psc (mmHg)"],
-      height: ["Schlemm's Canal Height", "Circumferential position (mm)", "hsc (um)", "x (mm)", "hsc (um)"],
+      pressure: ["Schlemm's Canal Pressure", "Circumferential position (degrees)", "Psc (mmHg)", "Position (°)", "Psc (mmHg)"],
+      height: ["Schlemm's Canal Height", "Circumferential position (degrees)", "hsc (um)", "Position (°)", "hsc (um)"],
       jcc: ["Collector Channel Flow", series.x_title || "Collector channel index", "Jcc (uL/min)", "CC", "Jcc (uL/min)"]
     }[kind];
 
@@ -3326,6 +3609,45 @@ var AqueousOutflow = (function () {
 
   /* ---------------- import / export ---------------- */
 
+  var CC_DISTRIBUTIONS = {
+    human: [
+      [1,1], [46,1], [95,1], [170,1], [264,1], [348,1], [374,1],
+      [383,1], [408,1], [486,1], [518,10], [542,1], [636,1],
+      [672,1], [681,1], [709,1], [717,1], [763,10], [779,1],
+      [812,1], [822,1], [830,1], [963,1], [999,1], [1081,1],
+      [1092,1], [1100,1], [1129,1], [1144,1]
+    ],
+    mouse: [
+      [1069,1], [1091,1], [1115,1], [1150,1], [1163,1], [1189,1],
+      [3,1], [13,1], [50,1], [116,1], [124,10], [149,1], [189,1],
+      [314,1], [387,1], [411,1], [445,1], [471,10], [496,1],
+      [505,1], [533,1], [555,1], [575,1], [603,1], [639,1],
+      [659,1], [683,1], [713,1], [726,1], [762,1], [798,1],
+      [853,1], [922,1], [947,1]
+    ]
+  };
+
+  function setCcSourceLabel(text) {
+    $("cc_source_label").textContent = "CC distribution: " + text;
+  }
+
+  function applyCcDistribution(source) {
+    if (source === "uniform") {
+      $("ccs").value = "";
+      setCcSourceLabel("Uniform");
+    } else {
+      var values = CC_DISTRIBUTIONS[source];
+      if (!values) throw new Error("Unknown collector-channel distribution.");
+      $("ccs").value = values.map(function (cc) { return cc[0] + ":" + cc[1]; }).join(", ");
+      setCcSourceLabel(source === "human" ? "Default human eye (29 CCs)" : "Default mouse eye (34 CCs)");
+    }
+    $("panel_ccs").open = true;
+    markResultDirty();
+    refreshVisuals();
+    $("status").textContent = "Loaded " + $("cc_source_label").textContent.toLowerCase() + ". Recalculating...";
+    solve();
+  }
+
   function exportModel() {
     var bundle = {
       format: "aqueous-outflow-model",
@@ -3369,6 +3691,7 @@ var AqueousOutflow = (function () {
     lastSolvedPayload = null;
     resultDirty = false;
     refreshVisuals();
+    setCcSourceLabel("Imported file");
     $("status").textContent = "Imported " + applied + " settings. Press Solve to run them.";
   }
 
@@ -3385,6 +3708,11 @@ var AqueousOutflow = (function () {
     if (lastResult) plotSeries(lastResult);
   });
   $("surgery").addEventListener("change", function () { updateInterventionUI(); markResultDirty(); });
+  [2, 3].forEach(function (slot) {
+    $("surgery" + slot).addEventListener("change", function () { updateInterventionUI(); markResultDirty(); });
+    $("procedure" + slot + "_positions").addEventListener("input", markResultDirty);
+    $("procedure" + slot + "_amount").addEventListener("input", markResultDirty);
+  });
   $("auto_rtm").addEventListener("change", function () { updateModeUI(); markResultDirty(); });
   $("rtm_profile").addEventListener("input", function () { updateModeUI(); markResultDirty(); });
   $("rtm_node_values").addEventListener("input", function () { updateModeUI(); markResultDirty(); });
@@ -3392,7 +3720,7 @@ var AqueousOutflow = (function () {
   $("yag_holes_list").addEventListener("input", updateInterventionUI);
   $("stent_nodes").addEventListener("input", updateInterventionUI);
 
-  var SKIP = ["mode", "eye_side", "surgery", "auto_rtm", "rtm_profile", "rtm_node_values",
+  var SKIP = ["mode", "eye_side", "surgery", "surgery2", "surgery3", "auto_rtm", "rtm_profile", "rtm_node_values",
     "plot_type", "trabeculotomies", "yag_holes_list", "stent_nodes", "import_file"];
   Array.prototype.forEach.call(document.querySelectorAll("input, select, textarea"), function (element) {
     if (SKIP.indexOf(element.id) >= 0) return;
@@ -3401,7 +3729,25 @@ var AqueousOutflow = (function () {
   });
 
   $("exportBtn").addEventListener("click", exportModel);
-  $("import_model").addEventListener("click", function () { $("import_file").click(); });
+  ["panel_constants", "panel_profiles", "panel_ccs", "panel_stent"].forEach(function (id) {
+    $("advanced_dialog_body").appendChild($(id));
+  });
+  $("advanced_settings").addEventListener("click", function () { $("advanced_dialog").showModal(); });
+  $("advanced_close").addEventListener("click", function () { $("advanced_dialog").close(); });
+  $("import_model").addEventListener("click", function () { $("model_source_dialog").showModal(); });
+  $("model_source_cancel").addEventListener("click", function () { $("model_source_dialog").close(); });
+  $("model_source_dialog").addEventListener("click", function (event) {
+    var button = event.target.closest("[data-cc-source]");
+    if (!button) return;
+    event.preventDefault();
+    var source = button.getAttribute("data-cc-source");
+    $("model_source_dialog").close();
+    if (source === "file") {
+      $("import_file").click();
+      return;
+    }
+    applyCcDistribution(source);
+  });
   $("import_file").addEventListener("change", function (event) {
     var file = event.target.files && event.target.files[0];
     if (!file) return;

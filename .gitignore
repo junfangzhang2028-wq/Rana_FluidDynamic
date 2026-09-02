@@ -54,9 +54,12 @@ aq-ui-dist/
 **/venv/
 
 # Local Codex working files and portable runtimes
+.codex-worktrees/
 .codex-ppt-work/
 .codex-runtime/
 .codex-node*.zip
+python_packages/
+.tmp_sheet_inspect/
 
 # Local package-manager caches and preview-only lockfiles
 .pnpm-store/
