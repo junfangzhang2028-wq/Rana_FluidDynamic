@@ -22,6 +22,7 @@ ENV/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.matplotlib-cache/
 .coverage
 .coverage.*
 htmlcov/
@@ -52,6 +53,9 @@ aq-ui-dist/
 **/dist/
 **/node_modules/
 **/venv/
+
+# Simulation outputs (keep solver and reproduction scripts, not generated data/figures)
+paper_reproduction_outputs/
 
 # Local Codex working files and portable runtimes
 .codex-worktrees/
