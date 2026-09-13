@@ -621,12 +621,7 @@
               <div class="grid2">
                 <div><label>Start node</label><input id="damage_start" type="number" step="1" min="0" value="0" /></div>
                 <div><label>Damaged nodes</label>
-                  <select id="damage_count">
-                    <option>1</option>
-                    <option>5</option>
-                    <option>25</option>
-                    <option>100</option>
-                  </select>
+                  <input id="damage_count" type="number" min="1" step="1" value="1" />
                 </div>
               </div>
               <div id="damage_hint" class="hint">Damage proceeds clockwise from the start node and wraps around node 0 when needed.</div>
@@ -2456,12 +2451,12 @@ var AqueousOutflow = (function () {
     var isFullDamage = surgery === "Laser damage — full node";
     if (isTmDamage || isFullDamage) {
       var damageStart = Math.trunc(finiteFloat(payload.damage_start, 0));
-      var damageCount = Math.trunc(finiteFloat(payload.damage_count, 1));
+      var damageCount = finiteFloat(payload.damage_count, 1);
       if (damageStart < 0 || damageStart >= totalNodes) {
         throw new Error("Damage start node must be between 0 and " + (totalNodes - 1) + ".");
       }
-      if (damageCount < 1 || damageCount > totalNodes) {
-        throw new Error("Damaged node count must be between 1 and " + totalNodes + ".");
+      if (!Number.isInteger(damageCount) || damageCount < 1 || damageCount > totalNodes) {
+        throw new Error("Damaged node count must be an integer between 1 and " + totalNodes + ".");
       }
 
       var damagedNodes = [];
@@ -2524,9 +2519,9 @@ var AqueousOutflow = (function () {
 
     function addExtraDamage(startValue, countValue, fullNode) {
       var start = Math.trunc(finiteFloat(startValue, 0));
-      var count = Math.trunc(finiteFloat(countValue, 1));
+      var count = finiteFloat(countValue, 1);
       if (start < 0 || start >= totalNodes) throw new Error("Damage start node must be between 0 and " + (totalNodes - 1) + ".");
-      if (count < 1 || count > totalNodes) throw new Error("Damaged node count must be between 1 and " + totalNodes + ".");
+      if (!Number.isInteger(count) || count < 1 || count > totalNodes) throw new Error("Damaged node count must be an integer between 1 and " + totalNodes + ".");
       var nodes = [], lookup = {};
       for (var di = 0; di < count; di++) { var dn = mod(start + di, totalNodes); nodes.push(dn); lookup[dn] = true; }
       var damageRtm = opts.variable_rtm && kwargs.rtm != null ? Float64Array.from(kwargs.rtm)
@@ -2569,7 +2564,7 @@ var AqueousOutflow = (function () {
       } else if (type === "iStent") {
         combinedStents = combinedStents.concat(parseStentNodes(isBlank(positions) ? "0" : positions, payload));
       } else if (type.indexOf("Laser damage") === 0) {
-        addExtraDamage(positions, amount, type === "Laser damage — full node");
+        addExtraDamage(positions, payload["procedure" + slot + "_amount"], type === "Laser damage — full node");
       }
     });
 
