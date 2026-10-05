@@ -522,15 +522,15 @@
           <summary>
             <div class="panel-head">
               <h2>Solver</h2>
-              <p>Mode, pressure-flow target, and baseline resistance.</p>
+              <p>Choose the result to calculate and enter the known value.</p>
             </div>
             <span class="panel-toggle">Core</span>
           </summary>
           <div class="section-body">
-            <label>Mode</label>
+            <label>Calculate</label>
             <select id="mode">
-              <option value="constant flow">constant flow</option>
-              <option value="constant pressure">constant pressure</option>
+              <option value="constant flow">Calculate pressure (IOP) from flowrate</option>
+              <option value="constant pressure">Calculate flowrate from pressure (IOP)</option>
             </select>
             <div class="grid2">
               <div>
@@ -550,18 +550,13 @@
             </div>
             <div class="grid2">
               <div>
-                <label id="iop_label">Baseline IOP</label>
+                <label id="iop_label">Pressure / IOP (mmHg)</label>
                 <input id="iop" type="number" step="0.1" value="15.09" />
               </div>
-              <div><label>Qt</label><input id="qt" type="number" step="0.1" value="2.0" /></div>
+              <div><label>Flowrate (uL/min)</label><input id="qt" type="number" step="0.1" value="2.0" /></div>
             </div>
-            <div id="iop_hint" class="hint">In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled.</div>
-            <div class="grid2">
-              <div><label>Pev</label><input id="pev" type="number" step="0.1" value="8.0" /></div>
-              <div><label>Rtm</label><input id="rtm" type="number" step="0.1" placeholder="default" /></div>
-            </div>
-            <div class="checkline"><input id="auto_rtm" type="checkbox" checked /><span>Auto RTM from baseline IOP</span></div>
-            <div class="hint">Infers Rtm from a baseline eye with no surgeries and the default CC distribution. If unconventional flow is enabled, Auto RTM recalibrates Rtm to keep the same baseline IOP.</div>
+            <div id="iop_hint" class="hint">Enter flowrate to calculate pressure (IOP) using the parameters in Advanced settings.</div>
+            <input id="auto_rtm" type="checkbox" hidden disabled />
           </div>
         </details>
 
@@ -665,6 +660,10 @@
           </summary>
           <div class="section-body">
             <div class="grid2">
+              <div><label>Pev (mmHg)</label><input id="pev" type="number" step="0.1" value="8.0" /></div>
+              <div><label>Rtm (mmHg min/uL)</label><input id="rtm" type="number" step="0.1" value="2.0" /></div>
+            </div>
+            <div class="grid2">
               <div><label>N collector channels</label><input id="n" type="number" step="1" value="30" /></div>
               <div><label>M nodes per CC</label><input id="m" type="number" step="1" value="40" /></div>
             </div>
@@ -698,7 +697,7 @@
           <div class="section-body">
             <label>TM resistance profile</label>
             <textarea id="rtm_profile" placeholder="Examples: 24 or 24,24,24,... (12 values) or 1:24, 2:30, ..., 12:24"></textarea>
-            <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar RTM and auto RTM.</div>
+            <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar Rtm.</div>
             <div class="subtle-divider"></div>
             <label>TM full node array</label>
             <textarea id="rtm_node_values" placeholder="Examples: 2400 or 2400,2400,... (N*M values)"></textarea>
@@ -2336,7 +2335,7 @@ var AqueousOutflow = (function () {
     }
 
     var manualRtm = finiteFloat(payload.rtm, null);
-    var autoRtm = finiteBool(payload.auto_rtm, false);
+    var autoRtm = false; // Automatic RTM calibration is temporarily disabled.
     if (rtmNodeValues === null && variableRtmProfile === null && autoRtm && mode === "constant flow") {
       var baselineIop = finiteFloat(payload.iop, 15.09);
       var derived = estimateRtmFromBaselineIop(baselineIop, opts, onProgress);
@@ -2632,7 +2631,7 @@ var AqueousOutflow = (function () {
       qt: $("qt").value,
       pev: $("pev").value,
       rtm: $("rtm").value,
-      auto_rtm: $("auto_rtm").checked,
+      auto_rtm: false,
       n: $("n").value,
       m: $("m").value,
       etm: $("etm").value,
@@ -3168,20 +3167,19 @@ var AqueousOutflow = (function () {
     var isConstantPressure = $("mode").value === "constant pressure";
     var hasVariableRtmProfile = $("rtm_profile").value.trim().length > 0;
     var hasFullRtmArray = $("rtm_node_values").value.trim().length > 0;
-    var autoRtmEnabled = $("auto_rtm").checked && !isConstantPressure && !hasVariableRtmProfile && !hasFullRtmArray;
-    $("iop_label").textContent = isConstantPressure ? "IOP" : "Baseline IOP";
-    $("iop").value = $("iop").value || (isConstantPressure ? "7.0" : "15.09");
+    $("iop_label").textContent = "Pressure / IOP (mmHg)";
+    $("iop").parentElement.classList.toggle("hidden", !isConstantPressure);
+    $("qt").parentElement.classList.toggle("hidden", isConstantPressure);
+    $("iop").disabled = !isConstantPressure;
+    $("qt").disabled = isConstantPressure;
     $("iop_hint").textContent = isConstantPressure
-      ? "In constant pressure mode, IOP is the target pressure for the solve."
-      : hasFullRtmArray
-        ? "Baseline IOP and scalar RTM are ignored while a full TM node array is present. Clear the node array to re-enable auto RTM."
-        : hasVariableRtmProfile
-          ? "Baseline IOP is not used while a TM resistance profile is present. Clear the profile to re-enable auto RTM."
-          : "In constant flow mode, this is used to estimate baseline TM resistance when Auto RTM is enabled. The estimate assumes a baseline eye with no surgeries and default collector channels.";
-    $("auto_rtm").disabled = isConstantPressure || hasVariableRtmProfile || hasFullRtmArray;
-    $("rtm").disabled = autoRtmEnabled || hasVariableRtmProfile || hasFullRtmArray;
+      ? "Enter pressure to calculate flowrate using the parameters in Advanced settings."
+      : "Enter flowrate to calculate pressure (IOP) using the parameters in Advanced settings.";
+    $("auto_rtm").checked = false;
+    $("auto_rtm").disabled = true;
+    $("rtm").disabled = hasVariableRtmProfile || hasFullRtmArray;
     $("rtm").placeholder = hasFullRtmArray ? "from node array"
-      : (hasVariableRtmProfile ? "from TM profile" : (autoRtmEnabled ? "auto" : "default"));
+      : (hasVariableRtmProfile ? "from TM profile" : "2.0");
   }
 
   function updateInterventionUI() {
@@ -3853,3 +3851,4 @@ var AqueousOutflow = (function () {
   </script>
 </body>
 </html>
+
