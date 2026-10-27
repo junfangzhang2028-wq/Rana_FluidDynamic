@@ -581,9 +581,9 @@
               <option>Laser damage — full node</option>
             </select>
             <div id="trab_position_wrap">
-              <label>Position ranges</label>
-              <textarea id="trabeculotomies" placeholder="Example: 0-99, 300-399"></textarea>
-              <div id="trabeculotomy_hint" class="hint">SC node ranges for the trabeculotomy.</div>
+              <label>Position ranges (°)</label>
+              <textarea id="trabeculotomies" placeholder="Example: 0-30, 90-120 or 350-10"></textarea>
+              <div id="trabeculotomy_hint" class="hint">Clockwise angular ranges; start included, end excluded. 350-10 crosses 0°.</div>
             </div>
             <div id="trab_defaults" class="grid2">
               <div id="trab_hours_wrap">
@@ -597,30 +597,30 @@
             </div>
             <input id="stent_node" type="hidden" value="0" />
             <div id="sinus_position_wrap">
-              <label>Position ranges</label>
-              <textarea id="sinusotomies" placeholder="Example: 120-180, 620-700"></textarea>
-              <div class="hint">SC node ranges for the sinusotomy.</div>
+              <label>Position ranges (°)</label>
+              <textarea id="sinusotomies" placeholder="Example: 36-54, 186-210"></textarea>
+              <div class="hint">Clockwise angular ranges, e.g. 350-10 crosses 0°. Use 0-360 for the full circle.</div>
             </div>
             <div id="yag_position_wrap">
-              <label>Position nodes</label>
-              <input id="yag_holes_list" type="text" placeholder="Example: 0, 200, 400" />
-              <div id="yag_nodes_hint" class="hint">Enter one or more SC node indexes, separated by commas.</div>
+              <label>Positions (°)</label>
+              <input id="yag_holes_list" type="text" placeholder="Example: 0, 60, 120" />
+              <div id="yag_nodes_hint" class="hint">Enter angles from 0° to 360°, separated by commas. 360° equals 0°.</div>
               <label>Preset count if positions are blank</label>
               <input id="yag_holes" type="number" step="1" min="1" max="6" value="2" />
             </div>
             <div id="stent_position_wrap">
-              <label>Position nodes</label>
-              <input id="stent_nodes" type="text" placeholder="Example: 0, 300, 600" />
-              <div id="stent_nodes_hint" class="hint">Each listed node receives the stent configured below. Node 0 is used if blank.</div>
+              <label>Positions (°)</label>
+              <input id="stent_nodes" type="text" placeholder="Example: 0, 90, 180" />
+              <div id="stent_nodes_hint" class="hint">Each angle receives the shared Stent Editor configuration. 0° is used if blank.</div>
             </div>
             <div id="damage_position_wrap">
               <div class="grid2">
-                <div><label>Start node</label><input id="damage_start" type="number" step="1" min="0" value="0" /></div>
-                <div><label>Damaged nodes</label>
-                  <input id="damage_count" type="number" min="1" step="1" value="1" />
+                <div><label>Start angle (°)</label><input id="damage_start" type="number" step="0.1" min="0" max="360" value="0" /></div>
+                <div><label>Damage extent (°)</label>
+                  <input id="damage_count" type="number" min="0.001" max="360" step="0.1" value="0.3" />
                 </div>
               </div>
-              <div id="damage_hint" class="hint">Damage proceeds clockwise from the start node and wraps around node 0 when needed.</div>
+              <div id="damage_hint" class="hint">Damage proceeds clockwise from the start angle, wrapping across 0° as needed.</div>
             </div>
             <div class="procedure-slot" id="procedure2_wrap">
               <label>Second procedure</label>
@@ -630,7 +630,7 @@
               </select>
               <div id="procedure2_details" class="hidden">
                 <label id="procedure2_position_label">Position</label>
-                <input id="procedure2_positions" type="text" placeholder="Node, node list, or start-end ranges" />
+                <input id="procedure2_positions" type="text" placeholder="Angles or clockwise angular ranges" />
                 <div class="grid2" id="procedure2_amount_wrap"><div><label id="procedure2_amount_label">Amount / preset</label><input id="procedure2_amount" type="number" min="1" step="1" value="1" /></div></div>
                 <div id="procedure2_hint" class="hint"></div>
               </div>
@@ -643,7 +643,7 @@
               </select>
               <div id="procedure3_details" class="hidden">
                 <label id="procedure3_position_label">Position</label>
-                <input id="procedure3_positions" type="text" placeholder="Node, node list, or start-end ranges" />
+                <input id="procedure3_positions" type="text" placeholder="Angles or clockwise angular ranges" />
                 <div class="grid2" id="procedure3_amount_wrap"><div><label id="procedure3_amount_label">Amount / preset</label><input id="procedure3_amount" type="number" min="1" step="1" value="1" /></div></div>
                 <div id="procedure3_hint" class="hint"></div>
               </div>
@@ -666,7 +666,7 @@
             </div>
             <div class="grid2">
               <div><label>N collector channels</label><input id="n" type="number" step="1" value="30" /></div>
-              <div><label>M nodes per CC</label><input id="m" type="number" step="1" value="40" /></div>
+              <div><label>Samples per CC interval (M)</label><input id="m" type="number" step="1" value="40" /></div>
             </div>
             <div class="grid2">
               <div><label>Etm (mmHg)</label><input id="etm" type="number" step="0.1" value="13" /></div>
@@ -700,33 +700,33 @@
             <textarea id="rtm_profile" placeholder="Examples: 24 or 24,24,24,... (12 values) or 1:24, 2:30, ..., 12:24"></textarea>
             <div class="hint">Takes 12 clock-hour values. If provided, this overrides scalar Rtm.</div>
             <div class="subtle-divider"></div>
-            <label>TM full node array</label>
+            <label>TM full circumferential array</label>
             <textarea id="rtm_node_values" placeholder="Examples: 2400 or 2400,2400,... (N*M values)"></textarea>
-            <div class="hint">Direct local TM resistor values for every SC node. Use 1 value to repeat uniformly or exactly N*M values to import a fully non-uniform TM map.</div>
+            <div class="hint">One local resistor value per angular sample, starting at 0°. Enter 1 value or N×M values; spacing = 360°/(N×M). Default uniform value: 2400.</div>
             <div class="subtle-divider"></div>
             <label>SC baseline height profile</label>
             <textarea id="h0_profile" placeholder="Examples: 20 or 20,20,20,... (N values) or 1:20, 2:18, ..., N:20"></textarea>
             <div class="hint">Takes N segment values, where N is the current collector-channel count. If provided, this overrides scalar h0.</div>
             <div class="subtle-divider"></div>
-            <label>SC full node array</label>
+            <label>SC full circumferential array</label>
             <textarea id="h0_node_values" placeholder="Examples: 20 or 20,20,... (N*M values)"></textarea>
-            <div class="hint">Direct baseline SC height at every node. Use 1 value to repeat uniformly or exactly N*M values for a fully non-uniform SC baseline map.</div>
+            <div class="hint">Initial height (μm) per angular sample, starting at 0°. Enter 1 value or N×M values; default uniform value: 20.</div>
             <div class="subtle-divider"></div>
-            <label>TM node resistance overrides</label>
-            <textarea id="rtm_node_overrides" placeholder="Examples: 120:2400, 121-140:3200"></textarea>
-            <div class="hint">Format is node:value or start-end:value. Values are local per-node TM resistors, so these apply after auto RTM, scalar RTM, or the 12-segment TM profile.</div>
+            <label>TM angular resistance overrides</label>
+            <textarea id="rtm_node_overrides" placeholder="Examples: 36:2400, 36.3-42.3:3200"></textarea>
+            <div class="hint">Use angle:value or start-end:value in degrees. Ranges include start and exclude end; values are local resistors applied after the scalar/profile/array.</div>
             <div class="subtle-divider"></div>
-            <label>SC node height overrides</label>
-            <textarea id="h0_node_overrides" placeholder="Examples: 120:20, 121-140:14"></textarea>
-            <div class="hint">Use this to locally change the SC baseline height at arbitrary nodes. This is the closest direct way to modify local SC circumferential resistance in the current solver.</div>
+            <label>SC angular height overrides</label>
+            <textarea id="h0_node_overrides" placeholder="Examples: 36:20, 36.3-42.3:14"></textarea>
+            <div class="hint">Use angle:height or start-end:height to change initial SC height (μm) in selected angular regions.</div>
             <div class="subtle-divider"></div>
             <label>SC conductance multiplier</label>
-            <textarea id="gsc_multiplier" placeholder="Examples: 1.0 or 1.0,1.0,... (N*M values) or 120:0.5, 121-140:2.0"></textarea>
-            <div class="hint">Applies a multiplicative factor to each circumferential SC segment conductance between node i and i+1. Accepts either 1/exact N*M values or segment:value overrides.</div>
+            <textarea id="gsc_multiplier" placeholder="Examples: 1.0 or 36:0.5, 36.3-42.3:2.0"></textarea>
+            <div class="hint">Scale SC link conductance with 1 value, N×M ordered values, or angle:value / start-end:value. Each angle selects the clockwise link starting there.</div>
             <div class="subtle-divider"></div>
             <label>SC conductance override</label>
-            <textarea id="gsc_override" placeholder="Examples: 0.002 or 0.002,0.002,... (N*M values) or 120:0.0, 121-140:0.003"></textarea>
-            <div class="hint">Directly replaces the computed conductance of selected SC segments. Segment i means the link between node i and node i+1. This overrides the height-based conductance calculation for those segments.</div>
+            <textarea id="gsc_override" placeholder="Examples: 0.002 or 36:0, 36.3-42.3:0.003"></textarea>
+            <div class="hint">Replace SC link conductance (μL/min/mmHg), using angles or clockwise angular ranges. Takes precedence over height-based conductance and its multiplier.</div>
           </div>
         </details>
 
@@ -740,9 +740,9 @@
           </summary>
           <div class="section-body">
             <label>Manual CC distribution</label>
-            <textarea id="ccs" placeholder="Example: 0:1, 40:1, 80:0.5, 120:2"></textarea>
-            <div class="hint">Format is node:per-channel conductance multiplier. Use commas or semicolons. Leave blank for the uniform default from N and M.</div>
-            <div class="hint">A multiplier changes only that collector channel; if only a node is provided, the multiplier defaults to 1.</div>
+            <textarea id="ccs" placeholder="Example: 0:1, 12:1, 24:0.5, 36:2"></textarea>
+            <div class="hint">Format is angle:per-channel conductance multiplier, in degrees. Separate by commas or semicolons. Blank uses the uniform layout.</div>
+            <div class="hint">A multiplier changes only that collector channel; if only an angle is provided, the multiplier defaults to 1.</div>
           </div>
         </details>
 
@@ -767,8 +767,8 @@
               <div><label>Height (um)</label><input id="stent_height" type="number" step="1" value="60" /></div>
             </div>
             <div class="grid2">
-              <div><label>Before dilation nodes</label><input id="stent_l_before" type="number" step="1" value="0" /></div>
-              <div><label>After dilation nodes</label><input id="stent_l_after" type="number" step="1" value="0" /></div>
+              <div><label>Before dilation (°)</label><input id="stent_l_before" type="number" min="0" max="360" step="0.1" value="0" /></div>
+              <div><label>After dilation (°)</label><input id="stent_l_after" type="number" min="0" max="360" step="0.1" value="0" /></div>
             </div>
             <div class="grid2">
               <div><label>After height (um)</label><input id="stent_h_after" type="number" step="1" placeholder="same as height" /></div>
@@ -870,7 +870,7 @@
         <section class="card plot-wrap">
           <div class="card-head">
             <h3>Profiles</h3>
-            <p>Line plots for circumferential pressure, canal height, and collector-channel flow.</p>
+            <p>Pressure, height and CC flow; repeated 30° at each end shows continuity across 0°/360°.</p>
           </div>
           <div id="plot"><div class="chart-tip" id="chart_tip"></div></div>
         </section>
@@ -878,6 +878,7 @@
     </main>
   </div>
 
+  <script src="angular-inputs.js"></script>
   <script>
 /* =====================================================================
    Aqueous Outflow Model - JavaScript port of the Python solver stack
@@ -2247,16 +2248,16 @@ var AqueousOutflow = (function () {
 
     var xPressure = [];
     for (var p = 0; p < pressure.length; p++) {
-      xPressure.push(pressure.length > 1 ? p * 360.0 / (pressure.length - 1) : 0);
+      xPressure.push(pressure.length > 1 ? p * 360.0 / pressure.length : 0);
     }
 
     var xJcc, jccTitle;
     if (ccs && ccs.length === jcc.length) {
-      xJcc = ccs.map(function (cc) { return Math.trunc(cc[0]); });
-      jccTitle = "Collector channel node";
+      xJcc = ccs.map(function (cc) { return Number(cc[0]) * 360 / pressure.length; });
+      jccTitle = "Circumferential position (degrees)";
     } else {
-      xJcc = jcc.map(function (_, idx) { return idx; });
-      jccTitle = "Collector channel index";
+      xJcc = jcc.map(function (_, idx) { return idx * 360 / Math.max(1, jcc.length); });
+      jccTitle = "Circumferential position (degrees)";
     }
 
     meta.total_nodes = pressure.length;
@@ -2294,6 +2295,7 @@ var AqueousOutflow = (function () {
      solve_payload
      --------------------------------------------------------------- */
   function solvePayload(payload, onProgress) {
+    if (payload.position_units === "degrees") payload = AngularInputs.toNodes(payload);
     var mode = payload.mode || "constant flow";
     var surgery = payload.surgery || "None";
     var geometry = payload.geometry || "ellipse";
@@ -2626,7 +2628,8 @@ var AqueousOutflow = (function () {
   ];
 
   function payload() {
-    return {
+    return AngularInputs.toNodes({
+      position_units: "degrees",
       mode: $("mode").value,
       geometry: $("geometry").value,
       iop: $("iop").value,
@@ -2685,7 +2688,7 @@ var AqueousOutflow = (function () {
       stent_h_window: $("stent_h_window").value,
       stent_l_spine: $("stent_l_spine").value,
       stent_h_spine: $("stent_h_spine").value
-    };
+    });
   }
 
   function numberValue(value, fallback) {
@@ -2813,30 +2816,13 @@ var AqueousOutflow = (function () {
   }
 
   function anatomyAxisGuide(series) {
-    if (!series || !series.x || !series.x.length) return null;
-    var minX = Math.min.apply(null, series.x);
-    var maxX = Math.max.apply(null, series.x);
-    if (!isFinite(minX) || !isFinite(maxX) || maxX <= minX) return null;
-
-    var labels = eyeLabels();
-    var span = maxX - minX;
-    var colors = anatomyColors();
+    var labels = eyeLabels(), colors = anatomyColors();
     return {
-      ticks: [
-        { value: minX, label: "Superior" },
-        { value: minX + span * 0.25, label: labels.right },
-        { value: minX + span * 0.5, label: "Inferior" },
-        { value: minX + span * 0.75, label: labels.left },
-        { value: maxX, label: "Superior" }
-      ],
-      regions: [
-        { x0: minX, x1: minX + span * 0.125, color: colors.Superior },
-        { x0: minX + span * 0.125, x1: minX + span * 0.375, color: colors[labels.right] },
-        { x0: minX + span * 0.375, x1: minX + span * 0.625, color: colors.Inferior },
-        { x0: minX + span * 0.625, x1: minX + span * 0.875, color: colors[labels.left] },
-        { x0: minX + span * 0.875, x1: maxX, color: colors.Superior }
-      ],
-      boundaries: [0.125, 0.375, 0.625, 0.875].map(function (r) { return minX + span * r; })
+      ticks: [{value:-30,label:""},{value:0,label:"Superior"},{value:90,label:labels.right},
+        {value:180,label:"Inferior"},{value:270,label:labels.left},{value:360,label:"Superior"},{value:390,label:""}],
+      regions: [{x0:-30,x1:45,color:colors.Superior},{x0:45,x1:135,color:colors[labels.right]},
+        {x0:135,x1:225,color:colors.Inferior},{x0:225,x1:315,color:colors[labels.left]},{x0:315,x1:390,color:colors.Superior}],
+      boundaries: [0,45,135,225,315,360]
     };
   }
 
@@ -3043,7 +3029,7 @@ var AqueousOutflow = (function () {
   function buildSetupSummary(model) {
     var labels = eyeLabels();
     var lines = [];
-    lines.push("<div><b>" + model.ccs.length + "</b> collector channels across <b>" + model.totalNodes + "</b> SC nodes.</div>");
+    lines.push("<div><b>" + model.ccs.length + "</b> collector channels across <b>" + model.totalNodes + "</b> angular samples.</div>");
     lines.push("<div>Additional procedures: <b>" + escapeHtml(model.procedures.length ? model.procedures.join(" + ") : "None") + "</b>.</div>");
     if (model.damageNodes.length) {
       lines.push("<div>Laser damage: <b>" + model.damageNodes.length + " nodes</b> (" +
@@ -3051,6 +3037,7 @@ var AqueousOutflow = (function () {
     }
     lines.push("<div>Profiles: TM " + (model.tmProfile ? "<b>variable</b>" : "scalar") + " | SC height " +
       (model.scProfile ? "<b>variable</b>" : "scalar") + ".</div>");
+    lines.push("<div>Angular resolution: <b>" + fmt(360 / model.totalNodes) + "°</b> per sample.</div>");
     if (model.hasGscControl) lines.push("<div>SC circumferential conductance: <b>customized</b>.</div>");
     lines.push("<div>Eye orientation: <b>" + labels.eye + "</b> with <b>" + labels.left + "</b> on the left and <b>" + labels.right + "</b> on the right.</div>");
     $("setup_summary").innerHTML = lines.join("");
@@ -3198,16 +3185,16 @@ var AqueousOutflow = (function () {
     $("damage_position_wrap").classList.toggle("hidden", surgery.indexOf("Laser damage") !== 0);
 
     $("trabeculotomy_hint").textContent = surgery === "Trabeculotomy"
-      ? (hasTrabRanges ? "Explicit ranges will override the preset clock-hour trabeculotomy." : "Leave blank to use the selected Trab hours preset.")
-      : "SC node ranges for the trabeculotomy.";
+      ? (hasTrabRanges ? "Explicit angular ranges override the preset clock-hour trabeculotomy." : "Leave blank to use the selected Trab hours preset.")
+      : "Clockwise angular ranges; start included, end excluded. 350-10 crosses 0°.";
 
     $("yag_nodes_hint").textContent = surgery === "YAG holes"
-      ? (hasYagNodes ? "Explicit YAG node locations will override the YAG hole count preset." : "Leave blank to use the YAG hole count above.")
-      : "Enter one or more SC node indexes, separated by commas.";
+      ? (hasYagNodes ? "Explicit YAG angular locations will override the YAG hole count preset." : "Leave blank to use the YAG hole count above.")
+      : "Enter angles from 0° to 360°, separated by commas. 360° equals 0°.";
 
     $("stent_nodes_hint").textContent = surgery === "iStent"
-      ? (hasStentNodes ? "All listed nodes will receive the stent model from the editor below." : "If left blank, node 0 will receive one stent.")
-      : "Each listed node receives the stent configured below.";
+      ? (hasStentNodes ? "All listed angles receive the shared Stent Editor configuration." : "If left blank, 0° receives one stent.")
+      : "Each listed angle receives the stent configured below.";
 
     if (surgery === "iStent") $("panel_stent").open = true;
 
@@ -3218,13 +3205,15 @@ var AqueousOutflow = (function () {
       if (!active) return;
       var isRanges = type === "Trabeculotomy" || type === "Sinusotomy";
       var isDamage = type.indexOf("Laser damage") === 0;
-      $("procedure" + slot + "_position_label").textContent = isRanges ? "Position ranges" : (isDamage ? "Start node" : "Position nodes");
-      $("procedure" + slot + "_positions").placeholder = isRanges ? "Example: 0-99, 300-399" : (isDamage ? "Example: 250" : "Example: 0, 300, 600");
+      $("procedure" + slot + "_position_label").textContent = isRanges ? "Position ranges (°)" : (isDamage ? "Start angle (°)" : "Positions (°)");
+      $("procedure" + slot + "_positions").placeholder = isRanges ? "Example: 0-30, 90-120 or 350-10" : (isDamage ? "Example: 75" : "Example: 0, 90, 180");
       $("procedure" + slot + "_amount_wrap").classList.toggle("hidden", type === "Sinusotomy" || type === "iStent");
-      $("procedure" + slot + "_amount_label").textContent = type === "Trabeculotomy" ? "Preset hours if blank" : (type === "YAG holes" ? "Preset count if blank" : "Damaged nodes");
+      $("procedure" + slot + "_amount_label").textContent = type === "Trabeculotomy" ? "Preset hours if blank" : (type === "YAG holes" ? "Preset count if blank" : "Damage extent (°)");
       $("procedure" + slot + "_hint").textContent = isRanges
-        ? (type === "Trabeculotomy" ? "Use ranges, or leave blank for a 1/4/12-hour preset." : "Enter at least one node range.")
-        : (isDamage ? "Damage proceeds clockwise from the start node." : "Enter comma-separated node indexes; iStent uses node 0 if blank.");
+        ? (type === "Trabeculotomy" ? "Use ranges, or leave blank for a 1/4/12-hour preset." : "Enter at least one clockwise angular range.")
+        : (isDamage ? "Damage proceeds clockwise from the start angle." : "Enter comma-separated angles; iStent uses 0° if blank.");
+      $("procedure" + slot + "_amount").step = isDamage ? "0.1" : "1";
+      $("procedure" + slot + "_amount").min = isDamage ? "0.001" : "1";
       if (type === "iStent") $("panel_stent").open = true;
     });
   }
@@ -3235,16 +3224,16 @@ var AqueousOutflow = (function () {
     if (meta.rtm_source === "baseline_iop") parts.push("Auto RTM enabled: baseline IOP " + fmt(meta.baseline_iop) + " -> Rtm " + fmt(meta.rtm_used) + ".");
     if (meta.rtm_source === "manual") parts.push("Manual Rtm used: " + fmt(meta.rtm_used) + ".");
     if (meta.rtm_source === "tm_profile") parts.push("Variable TM profile used: " + (meta.tm_profile_segments || 12) + " segments.");
-    if (meta.rtm_source === "tm_node_array") parts.push("Full TM node array used: " + (meta.tm_node_count || $("n").value * $("m").value) + " nodes.");
+    if (meta.rtm_source === "tm_node_array") parts.push("Full TM node array used: " + (meta.tm_node_count || $("n").value * $("m").value) + " angular samples.");
     if (meta.h0_source === "sc_profile") parts.push("Variable SC profile used: " + (meta.sc_profile_segments || $("n").value || 30) + " segments.");
-    if (meta.h0_source === "sc_node_array") parts.push("Full SC node array used: " + (meta.sc_node_count || $("n").value * $("m").value) + " nodes.");
-    if (meta.rtm_override_count) parts.push("TM node overrides applied: " + meta.rtm_override_count + ".");
-    if (meta.h0_override_count) parts.push("SC node height overrides applied: " + meta.h0_override_count + ".");
+    if (meta.h0_source === "sc_node_array") parts.push("Full SC node array used: " + (meta.sc_node_count || $("n").value * $("m").value) + " angular samples.");
+    if (meta.rtm_override_count) parts.push("TM angular overrides applied: " + meta.rtm_override_count + ".");
+    if (meta.h0_override_count) parts.push("SC angular height overrides applied: " + meta.h0_override_count + ".");
     if (meta.gsc_multiplier_count) parts.push("Full SC conductance multiplier array used: " + meta.gsc_multiplier_count + " segments.");
     else if (meta.gsc_multiplier_override_count) parts.push("SC conductance multiplier overrides applied: " + meta.gsc_multiplier_override_count + ".");
     if (meta.gsc_override_count) parts.push("Full SC conductance override array used: " + meta.gsc_override_count + " segments.");
     else if (meta.gsc_override_range_count) parts.push("SC conductance overrides applied: " + meta.gsc_override_range_count + ".");
-    if (meta.damage_count) parts.push("Laser damage applied: " + meta.damage_count + " nodes from node " + meta.damage_start + " (" +
+    if (meta.damage_count) parts.push("Laser damage applied: " + fmt(meta.damage_count * 360 / meta.total_nodes) + "° from " + fmt(meta.damage_start * 360 / meta.total_nodes) + "°" + " (" +
       (meta.damage_mode === "full_node" ? "TM + CC + SC" : "TM only") + ").");
     return parts.join(" ");
   }
@@ -3262,7 +3251,7 @@ var AqueousOutflow = (function () {
       rows.push('<div class="solution-row"><span>Psc</span><b>' + fmt(details.pressure) + ' mmHg</b></div>');
       rows.push('<div class="solution-row"><span>Canal height</span><b>' + fmt(details.height) + ' um</b></div>');
     } else if (details && details.kind === "cc") {
-      rows.push('<div class="solution-row"><span>CC node</span><b>' + escapeHtml(details.loc) + '</b></div>');
+      rows.push('<div class="solution-row"><span>Position</span><b>' + fmt(360 * Number(details.loc) / result.meta.total_nodes) + '°</b></div>');
       rows.push('<div class="solution-row"><span>Jcc</span><b>' + fmt(details.flow) + ' uL/min</b></div>');
     } else {
       rows.push("<div>Hover the pressure ring to inspect local pressure and canal height, or hover a collector channel to inspect its flow.</div>");
@@ -3370,7 +3359,7 @@ var AqueousOutflow = (function () {
 
     function defaultMessage() {
       if (kind === "setup") {
-        info.innerHTML = "Hover over a collector channel or colored procedure marker to inspect its type, node range, and angular position.";
+        info.innerHTML = "Hover over a collector channel or colored procedure marker to inspect its type and angular position/range.";
       } else if (!lastResult) {
         info.textContent = "Run Solve to create an interactive solution map.";
       } else {
@@ -3382,17 +3371,15 @@ var AqueousOutflow = (function () {
       var target = event.target.closest && event.target.closest("[data-kind]");
       if (!target || !zoom.contains(target)) return;
       if (target.dataset.kind === "setup-cc") {
-        info.innerHTML = "<b>Collector channel</b> &nbsp; Node: <b>" + escapeHtml(target.dataset.loc) +
-          "</b> &nbsp; Position: <b>" + fmt(Number(target.dataset.theta)) + "°</b> &nbsp; Multiplier: <b>" + fmt(Number(target.dataset.ratio)) + "</b>";
+        info.innerHTML = "<b>Collector channel</b> &nbsp; Position: <b>" + fmt(Number(target.dataset.theta)) + "°</b> &nbsp; Multiplier: <b>" + fmt(Number(target.dataset.ratio)) + "</b>";
       } else if (target.dataset.kind === "setup-procedure") {
         var startNode = Number(target.dataset.start);
         var endNode = Number(target.dataset.end);
         var setupTotal = lastResult && lastResult.meta ? lastResult.meta.total_nodes : Math.max(1, Number($("n").value) * Number($("m").value));
         var nodeText = startNode === endNode ? String(startNode) : startNode + "–" + endNode;
         var angleText = startNode === endNode ? fmt(Number(target.dataset.theta)) + "°"
-          : fmt(360 * startNode / setupTotal) + "°–" + fmt(360 * endNode / setupTotal) + "°";
-        info.innerHTML = "<b>" + escapeHtml(target.dataset.procedure) + "</b> &nbsp; Node(s): <b>" + escapeHtml(nodeText) +
-          "</b> &nbsp; Position: <b>" + escapeHtml(angleText) + "</b>";
+          : fmt(360 * startNode / setupTotal) + "°–" + fmt(360 * (endNode + 1) / setupTotal) + "°";
+        info.innerHTML = "<b>" + escapeHtml(target.dataset.procedure) + "</b> &nbsp; Position: <b>" + escapeHtml(angleText) + "</b>";
       } else if (target.dataset.kind === "node") {
         info.innerHTML = "<b>Ring segment</b> &nbsp; Position: <b>" + fmt(Number(target.dataset.theta)) +
           "°</b> &nbsp; Psc: <b>" + fmt(Number(target.dataset.pressure)) + " mmHg</b> &nbsp; Canal height: <b>" +
@@ -3400,8 +3387,7 @@ var AqueousOutflow = (function () {
       } else if (target.dataset.kind === "cc") {
         var total = lastResult && lastResult.meta ? lastResult.meta.total_nodes : 1200;
         var theta = 360 * Number(target.dataset.loc) / Math.max(1, total);
-        info.innerHTML = "<b>Collector channel</b> &nbsp; Node: <b>" + escapeHtml(target.dataset.loc) +
-          "</b> &nbsp; Position: <b>" + fmt(theta) + "°</b> &nbsp; Flow: <b>" + fmt(Number(target.dataset.flow)) + " uL/min</b>";
+        info.innerHTML = "<b>Collector channel</b> &nbsp; Position: <b>" + fmt(theta) + "°</b> &nbsp; Flow: <b>" + fmt(Number(target.dataset.flow)) + " uL/min</b>";
       }
     };
     zoom.onmouseleave = defaultMessage;
@@ -3493,6 +3479,15 @@ var AqueousOutflow = (function () {
       });
     }
 
+    if (config.periodic) {
+      [[-30,0],[360,390]].forEach(function(region) {
+        parts.push('<rect x="' + sx(region[0]) + '" y="' + m.top + '" width="' + (sx(region[1])-sx(region[0])) + '" height="' + ih + '" fill="#9fb8ad" opacity="0.10"></rect>');
+      });
+      [0,360].forEach(function(value) {
+        parts.push('<line x1="' + sx(value) + '" x2="' + sx(value) + '" y1="' + m.top + '" y2="' + (m.top+ih) + '" stroke="#a3dfce" stroke-dasharray="5 4" opacity="0.65"></line>');
+      });
+    }
+
     var yTicks = axisTicks(yLow, yHigh, 5);
     yTicks.forEach(function (value) {
       var y = sy(value);
@@ -3542,7 +3537,7 @@ var AqueousOutflow = (function () {
 
     if (config.markers) {
       for (var k = 0; k < xs.length; k++) {
-        if (!isFinite(ys[k])) continue;
+        if (!isFinite(ys[k]) || (config.synthetic && config.synthetic[k])) continue;
         parts.push('<circle cx="' + sx(xs[k]).toFixed(2) + '" cy="' + sy(ys[k]).toFixed(2) + '" r="4" fill="' + CHART.accent + '" stroke="' + CHART.plotBg + '" stroke-width="1.5"></circle>');
       }
     }
@@ -3588,7 +3583,7 @@ var AqueousOutflow = (function () {
       cross.setAttribute("x1", cxp); cross.setAttribute("x2", cxp);
       dot.setAttribute("cx", cxp); dot.setAttribute("cy", cyp);
       hover.style.display = "";
-      tip.innerHTML = "<div>" + escapeHtml(config.hoverX) + " <b>" + fmt(xs[best]) + "</b></div>" +
+      tip.innerHTML = "<div>" + escapeHtml(config.hoverX) + " <b>" + fmt(xs[best]) + "</b>" + ((xs[best] < 0 || xs[best] >= 360) ? " (same as " + fmt(((xs[best] % 360) + 360) % 360) + "°)" : "") + "</div>" +
         "<div>" + escapeHtml(config.hoverY) + " <b>" + fmt(ys[best]) + "</b></div>";
       tip.style.opacity = 1;
       var left = cxp / scale + 14;
@@ -3612,11 +3607,11 @@ var AqueousOutflow = (function () {
 
   function plotSeries(result) {
     var kind = $("plot_type").value;
-    var series = result.series[kind];
+    var series = AngularInputs.periodicSeries(result.series[kind], 30);
     var labels = {
       pressure: ["Schlemm's Canal Pressure", "Circumferential position (degrees)", "Psc (mmHg)", "Position (°)", "Psc (mmHg)"],
       height: ["Schlemm's Canal Height", "Circumferential position (degrees)", "hsc (um)", "Position (°)", "hsc (um)"],
-      jcc: ["Collector Channel Flow", series.x_title || "Collector channel index", "Jcc (uL/min)", "CC", "Jcc (uL/min)"]
+      jcc: ["Collector Channel Flow", "Circumferential position (degrees)", "Jcc (uL/min)", "Position (°)", "Jcc (uL/min)"]
     }[kind];
 
     drawChart({
@@ -3628,13 +3623,18 @@ var AqueousOutflow = (function () {
       hoverX: labels[3],
       hoverY: labels[4],
       markers: kind === "jcc",
-      anatomy: kind === "jcc" ? null : anatomyAxisGuide(series)
+      synthetic: series.synthetic,
+      periodic: true,
+      anatomy: anatomyAxisGuide(series)
     });
   }
 
   function refreshVisuals() {
-    renderSetupRing(payload(), lastResult);
-    renderSolutionRing(lastResult, lastSolvedPayload || payload());
+    try {
+      var current = payload();
+      renderSetupRing(current, lastResult);
+      renderSolutionRing(lastResult, lastSolvedPayload || current);
+    } catch (error) { $("status").textContent = error.message; }
   }
 
   function markResultDirty() {
@@ -3651,7 +3651,8 @@ var AqueousOutflow = (function () {
   }
 
   function solve() {
-    var currentPayload = payload();
+    var currentPayload;
+    try { currentPayload = payload(); } catch (error) { $("status").textContent = error.message; return Promise.resolve(); }
     var autoRtm = currentPayload.auto_rtm && currentPayload.mode === "constant flow" &&
       !String(currentPayload.rtm_profile || "").trim() && !String(currentPayload.rtm_node_values || "").trim();
     $("status").textContent = autoRtm ? "Solving (auto RTM search)..." : "Solving...";
@@ -3709,7 +3710,7 @@ var AqueousOutflow = (function () {
     } else {
       var values = CC_DISTRIBUTIONS[source];
       if (!values) throw new Error("Unknown collector-channel distribution.");
-      $("ccs").value = values.map(function (cc) { return cc[0] + ":" + cc[1]; }).join(", ");
+      $("ccs").value = values.map(function (cc) { return (360 * cc[0] / 1200) + ":" + cc[1]; }).join(", ");
       setCcSourceLabel(source === "human" ? "Default human eye (29 CCs)" : "Default mouse eye (34 CCs)");
     }
     $("panel_ccs").open = true;
@@ -3722,7 +3723,8 @@ var AqueousOutflow = (function () {
   function exportModel() {
     var bundle = {
       format: "aqueous-outflow-model",
-      version: 1,
+      version: 2,
+      position_units: "degrees",
       saved: new Date().toISOString(),
       inputs: {},
       results: lastResult ? { metrics: lastResult.metrics, meta: lastResult.meta, series: lastResult.series } : null
@@ -3745,10 +3747,11 @@ var AqueousOutflow = (function () {
 
   function applyImported(bundle) {
     var inputs = (bundle && bundle.inputs) || bundle;
+    if (inputs && typeof inputs === "object") inputs = AngularInputs.toDegrees(Object.assign({}, inputs, { position_units: bundle.position_units || inputs.position_units || "nodes" }));
     if (!inputs || typeof inputs !== "object") throw new Error("That file does not contain model inputs.");
     var applied = 0;
     FIELD_IDS.forEach(function (id) {
-      if (!(id in inputs)) return;
+      if (!(id in inputs) || inputs[id] === undefined || inputs[id] === null) return;
       var el = $(id);
       if (!el) return;
       if (el.type === "checkbox") el.checked = !!inputs[id];
