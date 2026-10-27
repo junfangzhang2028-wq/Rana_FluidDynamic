@@ -3,6 +3,7 @@
 This directory contains the static HTML/JavaScript calculator published with GitHub Pages.
 
 - `index.html` is the public entry point.
+- `user-guide.html` is the English user guide, linked from the calculator sidebar, including parameter defaults, procedures, and Figures 4/5 examples.
 - The calculator runs entirely in the visitor's browser; no Python server is required.
 - Update `index.html` and push the change to republish the embedded website.
 
